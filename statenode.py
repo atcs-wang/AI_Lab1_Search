@@ -1,4 +1,8 @@
+from __future__ import annotations
+from typing import Optional, Any, Hashable, Sequence, Iterable
 """
+An abstract state node for a goal-based search problem.
+
 This is not meant to be used directly
 as an object, but serves as a abstract parent object for various
 state-search-problem representations.
@@ -8,87 +12,107 @@ for all kinds of problems.
 """
 class StateNode:
 
-    """
-    A 'static' method that reads data from a text file and returns
-    a StateNode which is an initial state.
-     """
-    def readFromFile(filename):
+    """ Type Hints allow for the optional type declaration of "instance variables" this way, like Java """
+    parent : StateNode
+    last_action : Any
+    path_length : int
+    path_cost : float
+
+
+    @staticmethod
+    def readFromFile(filename : str) -> StateNode:
+        """Reads data from a text file and returns a StateNode which is an initial state.
+        This should be implemented in subclasses to read problem specific, user-designed file formats. 
+        """
         raise NotImplementedError
 
-    """
-    Creates an state node.
-    Takes:
-    parent: the preceding StateNode along the path taken to reach the state
-            (the initial state's parent should be None)
-    path_length: the number of actions taken in the path to reach the state
-    path_cost (optional: the cost of the entire path to reach the state
+    
+    def __init__(self, 
+                parent : Optional[StateNode], 
+                last_action: Optional[Any], 
+                path_length : int, 
+                path_cost : float = 0.0) :
+        """Creates a StateNode that represents a state of the environment and context for how the agent gets 
+        to this state (the path, aka a series of state-action transitions).
+        
+        Keyword Arguments:
+        parent -- the preceding StateNode along the path to reach this state. None, for an initial state.
+        last_action -- the preceding action taken along the path to reach this state. None, for an initial state. 
+        path_length -- the number of state-action transitions taken in the path to reach this state.
+        path_cost -- the accumulated cost of the entire path to reach this state
 
-    In any subclass of StateNode, the __init__() should take and store
-    additional parameters that define its state.
-    Use super.__init__() to call this
-    function and set up parent and path_cost
-    """
-    def __init__(self, parent, path_length, path_cost = 0) :
+        In any subclass of StateNode, the __init__() should take additional parameters that help define its state features.
+        Use super.__init__() to call this function and pass appropriate parameters.
+        """
         self.parent = parent
+        self.last_action = last_action
         self.path_length = path_length
         self.path_cost = path_cost
 
-    """
-    Returns a full feature representation of the environment's current state.
-    This should be an immutable type - only primitives, strings, and tuples.
-    (no lists or objects).
-    If two StateNode objects represent the same state,
-    get_features() should return the same for both objects.
-    Note, however, that two states with identical features
-    may have different paths.
-    """
-    def get_all_features(self) :
+
+    def get_all_features(self) -> Hashable:
+        """Returns a full featured representation of the state.
+
+        This should return something consistent, immutable, and hashable - primitives, strings, and tuples of such (generally no lists or objects).
+
+        If two StateNode objects represent the same state, get_features() should return the same for both objects.
+        Note, however, that two states with identical features may have been arrived at from different paths.
+        """
         raise NotImplementedError
 
-    """
-    Returns True if a goal state.
-    """
-    def is_goal_state(self) :
+    def __str__(self) -> str:
+        """Return a string representation of the state."""
         raise NotImplementedError
 
-    """
-    Generate and return an iterable (e.g. a list) of all possible neighbor
-    states (StateNode objects).
-    """
-    def generate_next_states(self) :
+    def is_goal_state(self) -> bool:
+        """Returns if a goal (terminal) state."""
         raise NotImplementedError
 
-    """
-    Return a string representation of the State
-    This gets called when str() is used on an Object.
-    """
-    def __str__(self) :
+    def is_legal_action(self, action : Any) -> bool:
+        """Returns whether an action is legal from the current state"""
         raise NotImplementedError
 
-
-    """
-    Returns a string describing the action taken from the parent StateNode
-    that results in transitioning to this StateNode
-    along the path taken to reach this state.
-    (None if the initial state)
-    """
-    def describe_previous_action(self) :
+    def get_all_actions(self) -> Iterable[Any]:
+        """Return all legal actions from this state. Actions may be whatever type you wish."""
         raise NotImplementedError
 
+    def describe_last_action(self) -> str:
+        """Returns a string describing the last_action taken (that resulted in transitioning from parent to this state)
+        (Can be None or "None" if the initial state)
+        It is not necessary to override, but may be nice for readability.
+        """
+        return str(self.last_action)
 
-    """
-    Returns the parent StateNode, the preceding StateNode
-    along the path taken to reach this state.
-    (None if the initial state)
-    """
-    def get_parent(self) :
-        return self.parent
 
-    """
-    Returns a list of StateNodes on the path from
-    the initial state to this state,
-    """
-    def get_path(self) :
+    def get_next_state(self, action : Any) -> StateNode:
+        """ Return a new StateNode that represents the state that results from taking the given action from this state.
+        The new StateNode object should have this StateNode (self) as its parent, and action as its last_action.
+
+        -- action is assumed legal (is_legal_action called before), but a ValueError may be passed for illegal actions if desired.
+        """
+        raise NotImplementedError
+
+    ## TODO Should these be left as an exercise for students? Or moved to the algorithms?
+
+    def generate_neighbor_states(self) -> Iterable[StateNode]:
+        """ Generate and return all possible neighbor states (all states that can result from taking legal actions in this state).
+        The generated StateNode objects should have this StateNode as its parent, and action as its last_action.
+
+        This method is a good candidate for using "yield" and writing a generator function instead of returning a list.
+        """
+        for a in self.get_all_actions():
+            yield self.get_next_state(action)
+        ### The above generator definition is equivalent to:
+        # return (self.get_next_state(action) for a in self.get_all_actions())
+        ### If it is better to get a List for the reusability, methods, or indexing:
+        # return [self.get_next_state(action) for a in self.get_all_actions()]
+
+    
+    def get_path(self) -> Sequence[StateNode]:
+        """Returns a sequence (list) of StateNodes representing the path from the initial state to this state.
+
+        You do not need to override this method.
+        """
         path = [self]
         s = self.get_parent()
         while s is not None :
@@ -97,42 +121,28 @@ class StateNode:
         path.reverse()
         return path
 
-    """
-    Returns the length of the entire path (number of
-    actions) to reach this state
-    """
-    def get_path_length(self) :
-        return self.path_length
-
-    """
-    Returns the cost of the entire path (total cost
-    of actions) to reach this state
-    """
-    def get_path_cost(self) :
-        return self.path_cost
-
-
-    """
-    Leave this function alone.
-    This is needed to make tuple comparison work with heapq
-    (PriorityQueue). However, it doesn't actually
-    describe ordering.
-    """
-    def __lt__(self, other):
+    
+    def __lt__(self, other) -> bool:
+        """
+        Leave this function alone; it is needed to make tuple comparison work with heapq (PriorityQueue). 
+        It doesn't actually describe any ordering.
+        """
         return True
 
-    """
-    Leave this function alone;
-    This is needed to make StateNode immutable and usable in Sets/Dicts;
-    it compares types and get_all_features().
-    """
-    def __eq__(self, other):
-        return (isinstance(other, type(self)) and (self.get_all_features() == other.get_all_features()))
+    def __eq__(self, other) -> bool:
+        """
+        __eq__ is needed to make StateNode comparable and usable in Sets/Dicts
+        This implementation simply checks types and then compares get_all_features().
 
-    """
-    Leave this function alone;
-    This is important to make StateNode hashable and usable in Sets/Dicts;
-    it hashes get_all_features().
-    """
-    def __hash__(self):
+        You probably want to leave this function alone in subclasses, but
+        it could theoretically be overridden to be more efficient.
+        """
+        if isinstance(other, type(self)) :
+            return self.get_features() == other.get_features()
+        raise NotImplementedError
+    
+    def __hash__(self) -> int:
+        """
+        Leave this function alone; it is important to make StateNode hashable and usable in Sets/Dicts.
+        """
         return hash(self.get_all_features())

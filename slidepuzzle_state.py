@@ -1,150 +1,183 @@
+# Lab 1, Part 1b: Problem Representation.
+# Name(s): SOLUTION
+from __future__ import annotations
+from typing import Optional, Tuple, Dict, Any, Hashable, Sequence, Iterable
+
 from statenode import StateNode
 
+Coordinate = TypeVar('Coordinate', bound=Tuple[int,int])
+
+#### Lab 1, Part 1b: Problem Representation #################################################
+
+"""
+A state node for the slide puzzle environment.
+"""
 class SlidePuzzleState(StateNode):
-    # A class-level variable (static) representing all the directions
-    # the empty position can move.
-    NEIGHBORING_STEPS = {(0,1): " LEFT", (1,0): " UP", (0, -1): " RIGHT", (-1,0): " DOWN"}
 
+    """ Type Hints allow for the optional type declaration of "instance variables" this way, like Java.
+        It is recommended you list them here:
     """
-    A 'static' method that reads mazes from text files and returns
-    a SlidePuzzleState object.
-    """
-    def readFromFile(filename):
+    # TODO Declare instance variables, like:
+    # variable : type
+    tiles : Tuple[Tuple[int, ...], ...]
+    empty_pos : Coordinate
+    
+    @staticmethod
+    def readFromFile(filename : str) -> StateNode:
+        """Reads data from a text file and returns a SlidePuzzleState which is an initial state."""
         with open(filename, 'r') as file:
-            tiles = []
-            n = None
-
             n = int(file.readline())
-            for i in range(n):
-                row = [int(x) for x in file.readline().split()]
-                tiles.append(row)
-
-
-        return SlidePuzzleState( tiles = tiles,
-                            last_action = None,
+            tiles = tuple(tuple(int(x) for x in file.readline.split()) for i in range(n))
+            # look for the zero 
+            for r, row in enumerate(tiles):
+                for c, i in enumerate(row):
+                    if i == 0:
+                        empty_pos = (r,c)
+                        return SlidePuzzleState( 
+                            tiles = tiles,
+                            empty_pos = empty_pos,
                             parent = None,
+                            last_action = None,
                             path_length = 0,
                             path_cost = 0,
-                            empty_pos = None)
-
-    """
-    Creates a maze state node.
-    Takes:
-    tiles: 2-d grid of board layout (will be deep copied)
-    last_action: string describing the last action taken
-    OPTIONAL empty_pos: 2-tuple coordinates of empty tile.
-
-    parent: the preceding StateNode along the path taken to reach the state
-            (the initial state's parent should be None)
-    path_length, the number of actions taken in the path to reach the state
-    path_cost (optional), the cost of the entire path to reach the state
-    """
-    def __init__(self, tiles, last_action, parent, path_length, path_cost = 0, empty_pos = None) :
-        super().__init__(parent, path_length, path_cost)
-
-        self.tiles = tuple([tuple(row) for row in tiles])
-        self.last_action = last_action
+                            )
+            # If we get here, no zero found
+            raise ValueError
+    
+    #Override
+    def __init__(self, 
+            tiles : Tuple[Tuple[int, ...], ...],
+            empty_pos : Coordinate,
+            parent : Optional[StateNode], 
+            last_action: Optional[Any], 
+            path_length : int, 
+            path_cost : float = 0.0) :
+        """Creates a SlidePuzzleState that represents a state of the environment and context for how the agent gets 
+        to this state (the path, aka a series of state-action transitions).
+        
+        Keyword Arguments:
+        All the arguments for StateNode's __init__; Use super.__init__() to call this function and pass appropriate parameters.
+        tiles -- a tuple grid of integers representing the position of different numbered tiles
+        empty_pos -- a coordinate indicating the position of the empty spot (tile 0)
+        """
+        super().__init__(parent = parent, last_action = last_action, path_length = path_length, path_cost = path_cost)
+        self.tiles = tiles
         self.empty_pos = empty_pos
-        if empty_pos == None:
-            self.empty_pos = self.indexesOf(0)
 
-    def indexesOf(self, n):
-        for r, row in enumerate(self.tiles):
-            for c, i in enumerate(row):
-                if n == i:
-                    return (r,c)
+    """ Additional accessor methods - needed for the GUI"""
 
-    def size(self) :
+    def get_size(self) -> int:
+        """Returns the dimension N of the square puzzle represented which is N-by-N."""
         return len(self.tiles)
 
-    def tile_at(self, row, col) :
-        return self.tiles[row][col]
+    def get_tile_at(self, coord : Coordinate) -> int:
+        """ Returns the number of the tile at the given Coordinate (2-tuple of (row, col)) .
+        If the position is empty, return 0.
+        Ideally, this should be done in constant time, not O(N) or O(N^2) time...
+        """
+        return self.tiles[coord[0]][coord[1]]
 
-    def get_empty_pos(self):
+    def get_empty_pos(self) -> Coordinate:
+        """Returns Coordinate (2-tuple of (row, col)) of the empty tile.
+        Ideally, this should be done in constant time, not O(N) or O(N^2) time...
+        """
         return self.empty_pos
 
-    """
-    Returns a full feature representation of the environment's current state.
-    This should be an immutable type - namely primitives, strings, and tuples.
-    (no lists or objects).
-    If two StateNode objects represent the same state,
-    get_features() should return the same for both objects.
-    Note, however, that two states with identical features
-    may have different paths.
-    """
+    """ Overridden methods from StateNode """
+
     # Override
-    def get_all_features(self) :
+    def get_all_features(self) -> Hashable:
+        """Returns a full featured representation of the state.
+
+        This should return something consistent, immutable, and hashable - primitives, strings, and tuples of such (generally no lists or objects).
+                
+        If two SlidePuzzleState objects represent the same state, get_features() should return the same for both objects.
+        Note, however, that two states with identical features may have been arrived at from different paths.
+        """
         return self.tiles
 
-    """
-    Returns True if a goal state.
-    """
     # Override
-    def is_goal_state(self) :
-        n = 0
-        for r in range(self.size()):
-            for c in range(self.size()):
-                if self.tile_at(r,c) != n:
+    def __str__(self) -> str:
+        """Return a string representation of the state.
+           
+           This should return N lines of N numbers each, separated by whitespace,
+           similar to the file format for initial states
+        """
+        n = self.get_size()
+        return "\n".join(" ".join("{:2d}".format(self.tile_at(r,c) for c in range(n))) for r in range(n))
+
+
+    # Override
+    def is_goal_state(self) -> bool:
+        """Returns if a goal (terminal) state. 
+        The goal of the slide puzzle is to have the empty spot in the 0th row and col,
+        and then the rest of the numbered tiles in row-major order!
+        """
+        i = 0
+        for r in range(self.get_size()):
+            for c in range(self.get_size()):
+                if self.tile_at(r,c) != i:
                     return False
-                n += 1
+                i += 1
         return True
 
-    """
-    Return a string representation of the State
-    This gets called when str() is used on an Object.
-    """
     # Override
-    def __str__(self):
-        str_list = []
+    def is_legal_action(self, action : Coordinate) -> bool:
+        """Returns whether an action is legal from the current state
 
-        for row in range(self.size()):
-            for col in range(self.size()):
-                str_list.append("{:3d}".format(self.tile_at(row,col)))
-            str_list.append("\n")
-        return "".join(str_list)
+        Actions in the slide puzzle environment involve moving a tile into
+        the adjacent empty spot.
+        It is up to the coder to define a datatype for representing actions,
+        and also then what constitutes a legal action in a state.
+        
+        One possible way to represent action is as the Coordinate of the tile that
+        is to be moved into the empty slot. It needs to be not out of bounds, and 
+        actually adjacent.
+        """
+        return self.is_inbounds(action) and (
+            abs(action[0] - self.empty_pos[0]) + abs(action[1] - self.empty_pos[1])) == 1
 
-
-
-    """
-    Returns a string describing the action taken from the parent StateNode
-    that results in transitioning to this StateNode
-    along the path taken to reach this state.
-    (None if the initial state)
-    """
-    def describe_previous_action(self) :
-        return self.last_action
-
-    """
-    Generate and return an iterable (e.g. a list) of all possible neighbor
-    states (StateNode objects).
-    If avoid_backtrack is True, don't include the parent state in the iterable.
-    """
     # Override
-    def generate_next_states(self) :
-        listgrid = [list(row) for row in self.tiles]
-        n = len(listgrid);
-        nbs = []
+    def get_all_actions(self) -> Iterable[Coordinate]:
+        """Return all legal actions at this state."""
+        for dr, dc in ((0,1), (-1,0), (0,-1), (1,0)):
+            action = (self.empty_pos[0] + dr, self.empty_pos[1] + dc)
+            if self.is_inbounds(action):
+                yield action
 
-        blank_y, blank_x = self.empty_pos
+    # Override
+    def describe_last_action(self) -> str:
+        """Returns a string describing the last_action taken (that resulted in transitioning from parent to this state)
+        (Can be None or "None" if the initial state)
 
-        for dy, dx in SlidePuzzleState.NEIGHBORING_STEPS:
-            swap_y = dy + blank_y
-            swap_x = dx + blank_x
-            if swap_x >= 0 and  swap_x < n and swap_y >= 0 and  swap_y < n:
+        The action should be described as "Moved tile X" where X is the tile number
+        that last got slid into the empty spot.
+        """
+        return "Moved tile " + self.parent.get_tile_at(self.last_action) if self.last_action != None else None
 
-                listgrid[blank_y][blank_x] = listgrid[swap_y][swap_x]
-                listgrid[swap_y][swap_x] = 0
-                nbs.append(SlidePuzzleState(tiles = listgrid,
-                    last_action = str(listgrid[blank_y][blank_x]) + SlidePuzzleState.NEIGHBORING_STEPS[(dy,dx)],
-                    parent = self,
-                    path_length = self.path_length + 1,
-                    path_cost = self.path_cost + 1,
-                    empty_pos = (swap_y, swap_x)
-                    ))
-                listgrid[swap_y][swap_x] = listgrid[blank_y][blank_x]
-                listgrid[blank_y][blank_x] = 0
+    # Override
+    def get_next_state(self, action : Coordinate) -> SlidePuzzleState:
+        """ Return a new StateNode that represents the state that results from taking the given action from this state.
+        The new StateNode object should have this StateNode (self) as its parent, and action as its last_action.
 
-        return nbs
-
+        -- action is assumed legal (is_legal_action called before), but a ValueError may be passed for illegal actions if desired.
+        """
+        # Swap empty_pos with action Coord
+        t = self.get_tile_at(action)
+        new_tiles = tuple(tuple( 0 if (r,c) == action else (t if (r,c) == self.empty_pos else x) for c, x in enumerate(row)) for r, row in enumerate(self.tiles))
+        return SlidePuzzleState( 
+                        tiles = new_tiles,
+                        empty_pos = action,
+                        parent = self,
+                        last_action = action,
+                        path_length = self.path_length + 1,
+                        path_cost = self.path_cost + 1,
+                        )
 
     """ You may add additional methods that may be useful! """
+
+    def is_inbounds(self, coord : Coordinate) -> bool:
+        return (coord[0] >= 0) and (coord[1]  >= 0) and (coord[0] < self.get_size()) and (coord[1] < self.get_size())
+
+    def get_tile_final_dest(self, tile : int) -> Coordinate:
+        return (tile // self.get_size(), tile % self.get_size())

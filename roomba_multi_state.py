@@ -1,188 +1,137 @@
+from __future__ import annotations
+from typing import Optional, Tuple, Dict, Any, Hashable, Sequence, Iterable
+
 from statenode import StateNode
-FLOOR = '.'
-CARPET = '~'
-WALL = '#'
-GOAL = 'G'
+from roomba_state import *
 
-class RoombaMultiRouteState(StateNode):
-    # A class-level variable (static) representing all the directions
-    # the position can move.
-    NEIGHBORING_STEPS = {(0,1): "East", (1,0): "South", (0, -1): "West", (-1,0): "North"}
-    # A class-level variable (static) representing the cost to move onto
-    # different types of terrain.
-    PATH_COSTS = {FLOOR: 1, CARPET: 2, WALL: 0, GOAL: 1}
 
+DIRTY_FLOOR : LayoutConstant = '?'
+DIRTY_CARPET : LayoutConstant = '+'
+
+DIRTY_CONST = {FLOOR : DIRTY_FLOOR, CARPET : DIRTY_CARPET}
+CLEAN_CONST = {DIRTY_FLOOR : FLOOR, DIRTY_CARPET : CARPET}
+
+class RoombaMultiRouteState(RoombaRouteState):
     """
-    A 'static' method that reads mazes from text files and returns
-    a RoombaMultiRouteState which is an initial state.
+    A subclass of RoombaRouteState. The main difference is that the roomba agent's goal is to 
+    reach (and clean) ALL the dirty spots, not just one of them.
     """
-    def readFromFile(filename):
+
+    dirty_locations : Tuple[Coordinate,...]
+
+    #Overridden
+    @staticmethod
+    def readFromFile(filename : str) -> RoombaRouteMultiState:
+        """Reads data from a text file and returns a RoombaMultiRouteState which is an initial state.
+        """
         with open(filename, 'r') as file:
-            grid = []
-            max_r, max_c = [int(x) for x in file.readline().split()]
-            init_r, init_c = [int(x) for x in file.readline().split()]
-            for i in range(max_r):
-                row = list(file.readline().strip()) # or file.readline().split()
-                assert (len(row) == max_c)
-                #
-                grid.append(tuple(row)) # list -> tuple makes it immutable, needed for hashing
-            grid = tuple(grid) # grid is a tuple of tuples - a 2d grid!
+            # This first part is the same as the RoombaRouteState...
 
-            return RoombaMultiRouteState(position = (init_r, init_c),
+            # First line has the number of rows and columns
+            max_r, max_c = (int(x) for x in file.readline().split())
+            # Second line has the initial row/column of the roomba agent
+            init_r, init_c = (int(x) for x in file.readline().split())
+            # Remaining lines are the layout grid of 
+            grid = tuple( tuple(line.split()) for line in file.readlines())
+            # Sanity check - is the grid really the right size?
+            assert (len(grid) == max_r and all( len(row) == max_c for row in grid))
+
+            # Once again, the grid itself is effectively the same for each state, 
+            # except now we must keep track of which dirty spots have been cleaned or not yet.
+            # Instead of updating the grid from state to state, 
+            # we will instead keep a list (tuple) of which of the locations are still dirty. 
+            # This makes tracking the differences between states easier, faster, 
+            # and more memory efficient, among other advantages.
+            dirty = []
+            for i in range(len(grid)):
+                for j in range(len(grid[i])):
+                    if self.grid[i][j] in (DIRTY_CARPET, DIRTY_FLOOR):
+                        dirty.add((i,j))
+
+            # Now re-do the grid with the dirty spots changed to their clean counterparts
+            grid = tuple( tuple(CLEAN_CONST.get(x, x) for x in row) for row in grid)
+
+            return RoombaRouteMultiState(dirty_locations = tuple(dl),
+                                position = (init_r, init_c),
                                 grid = grid,
-                                last_action = None,
                                 parent = None,
+                                last_action = None,
                                 path_length = 0,
                                 path_cost = 0)
 
-    """
-    Creates a RoombaMultiRouteState node.
-    Takes:
-    position: 2-tuple of current coordinates
-    grid: 2-d grid representing features of the maze.
-    last_action: string describing the last action taken
 
-    parent: the preceding StateNode along the path taken to reach the state
-            (the initial state's parent should be None)
-    path_length, the number of actions taken in the path to reach the state
-    path_cost (optional), the cost of the entire path to reach the state
-    """
-    def __init__(self, position, grid, last_action, parent, path_length, path_cost = 0,
-        dirt_locations = None) :
-        super().__init__(parent, path_length, path_cost)
-        self.my_r, self.my_c = position[0], position[1]
-        self.grid = grid
-        self.last_action = last_action
-        if dirt_locations is None:
+    def __init__(self, 
+                dirty_locations : Tuple[Coordinate,...],
+                position: Tuple[int, int], 
+                grid: Tuple[Tuple[LayoutConstant,...],...], 
+                parent : Optional[RoombaMultiRouteState], 
+                last_action: Optional[Coordinate],  #Note that actions are (relative) Coordinates!
+                path_length : int, 
+                path_cost : float = 0.0) :
+        """
+        Creates a RoombaMultiRouteState, which represents a state of the roomba's environment .
 
-            self.dirt_locations = set()
-            for i in range(len(grid)):
-                for j in range(len(grid[i])):
-                    if self.grid[i][j] == GOAL:
-                        self.dirt_locations.add((i,j))
-        else :
-            self.dirt_locations = dirt_locations
+        Keyword Arguments (in addition to RoombaRouteState arguments):
+        dirty_locations -- A tuple of all the not-yet cleaned (visited) locations that are (still) dirty in the grid. 
+        """
+        super().__init__(position = position, grid = grid, parent = parent, last_action = last_action, path_length = path_length, path_cost = path_cost)
+        self.dirty_locations = dirty_locations
+        
 
 
-    """
-    Returns a full feature representation of the environment's current state.
-    This should be an immutable type - only primitives, strings, and tuples.
-    (no lists or objects).
-    If two StateNode objects represent the same state,
-    get_features() should return the same for both objects.
-    Note, however, that two states with identical features
-    may have different paths.
-    """
+    """ Overridden methods from RoombaRouteState and StateNode """
+   
     # Override
     def get_all_features(self) :
-        return (self.get_position(), tuple(self.get_dirt_locations()) ) # , self.get_grid()
+        """Returns a full feature representation of the state.
 
-    """
-    Returns True if a goal state.
-    """
+        Once again, the grid  is essentially the same for each state, except we must 
+        keep track of which dirty spots have been cleaned or not yet.
+
+        Therefore, we'll use dirty_locations as a feature (plus roomba agent position), since it captures the 
+        difference between two states sufficiently. Note that this is far more time and memory efficient 
+        than using the whole grid as a feature, which must be updated for each state.
+
+        If two RoombaMultiRouteStateNode objects represent the same state, get_features() should return the same for both objects.
+        Note, however, that two states with identical features may have been arrived at from different paths.
+        """
+        return (self.get_position(), self.dirty_locations) 
+
     # Override
-    def is_goal_state(self) :
-        return len(self.dirt_locations) == 0
+    def __str__(self) -> str:
+        """Return a string representation of the state."""
+        s = list(super().__str__()) 
+        # Draw all dirty spots 
+        for r, c in self.dirty_locations:
+            pos = r * (self.get_width()+1) + self.get_col()
+            s[pos]+ DIRTY_CONST.get(s[pos],s[pos])
+        return str(s)
 
-    """
-    Return a string representation of the State
-    This gets called when str() is used on an Object.
-    """
     # Override
-    def __str__(self):
-        s = "\n".join(["".join(row) for row in self.grid])
-        pos = self.my_r * (self.get_width()+1) + self.my_c
-        return s[:pos] + 'X' + s[pos+1:] + "\n"
+    def is_goal_state(self) -> bool:
+        """Returns if a goal (terminal) state.
+        If there are no more dirty locations, the roomba has finished cleaning!
+        """
+        return len(self.dirty_locations) == 0
 
-    """
-    Returns a string describing the action taken from the parent StateNode
-    that results in transitioning to this StateNode
-    along the path taken to reach this state.
-    (None if the initial state)
-    """
     # Override
-    def describe_previous_action(self) :
-        return self.last_action
+    def get_next_state(self, action : Any) -> RoombaMultiRouteState:
+        """ Return a new RoombaRouteState that represents the state that results from taking the given action from this state.
+        The new RoombaRouteState object should have this (self) as its parent, and action as its last_action.
 
-    """
-    Generate and return an iterable (e.g. a list) of all possible neighbor
-    states (StateNode objects).
-    """
-    # Override
-    def generate_next_states(self) :
-        #If Roomba is on uncleaned dirty tile, only proper action is CLEAN
-        if (self.my_r, self.my_c) in self.dirt_locations:
-            # new grid has dirt tile removed
-            temp = [list(row) for row in self.grid]
-            temp[self.my_r][self.my_c] = FLOOR
-            newgrid = tuple([tuple(row) for row in temp])
-            # only one successor state
-            return [RoombaMultiRouteState(
-                    position = (self.my_r, self.my_c), # same position
-                    grid = newgrid, # updated grid with removed dirt
-                    last_action = "CLEAN",
-                    parent = self,
-                    path_length = self.path_length + 1,
-                    path_cost = self.path_cost + 1, # cost 1 to clean
-                    dirt_locations = # update dirt_locations by removing this tile
-                    self.dirt_locations - {(self.my_r, self.my_c)}
-                    )]
+        -- action is assumed legal (is_legal_action called before)
+        """
+        new_pos = add(self.position, action)
+        step_cost = RoombaRouteState.TRANSITION_COSTS[self.get_terrain(new_pos)]
+        # If moving onto a dirty spot, it gets cleaned!
+        return RoombaRouteState( 
+            dirty_locations = tuple(list(self.dirty_locations).remove(new_pos)) 
+                                if new_pos in dirty_locations 
+                                else self.dirty_locations,
+            position = new_pos,
+            grid = grid, 
+            last_action = action,
+            parent = self,
+            path_length = self.path_length + 1,
+            path_cost = self.path_cost + step_cost)
 
-        states = []
-
-        for dr, dc in RoombaMultiRouteState.NEIGHBORING_STEPS:
-            new_r, new_c = self.my_r + dr, self.my_c + dc
-            # Don't use any out-of-bounds moves
-            if (new_r < 0) or (new_c < 0) or (new_r >= self.get_height()) or (new_c >= self.get_width()):
-                continue
-            terrain = self.grid[new_r][new_c]
-            # Don't add moves that go into walls
-            if terrain == WALL:
-                continue
-
-            step_cost = RoombaMultiRouteState.PATH_COSTS[terrain]
-            next_state = RoombaMultiRouteState(
-                            position = (new_r, new_c),
-                            grid = self.grid,
-                            last_action = RoombaMultiRouteState.NEIGHBORING_STEPS[(dr, dc)],
-                            parent = self,
-                            path_length = self.path_length + 1,
-                            path_cost = self.path_cost + step_cost,
-                            dirt_locations = self.dirt_locations
-                            )
-
-            states.append(next_state)
-
-        return states
-
-    """ Additional accessor methods used the GUI """
-
-    """
-    Returns the width (number of cols) of the maze
-    """
-    def get_width(self):
-        return len(self.grid[0])
-
-    """
-    Returns the height (number of rows) of the maze
-    """
-    def get_height(self):
-        return len(self.grid)
-
-    """
-    Returns a 2d tuple grid of the maze.
-    """
-    def get_grid(self) :
-        return self.grid
-    """
-    Returns a 2-tuple of the roomba's position (row, col) in the maze
-    """
-    def get_position(self):
-        return self.my_r, self.my_c
-
-    """
-    Returns a Set of 2-tuples of the positions of all remaining
-    uncleaned dirt tiles in the maze.
-    """
-    def get_dirt_locations(self):
-        return self.dirt_locations
