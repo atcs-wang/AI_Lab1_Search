@@ -1,18 +1,18 @@
 # Lab 1, Part 1b: Problem Representation.
 # Name(s): SOLUTION
 from __future__ import annotations
-from typing import Optional, Tuple, Dict, Any, Hashable, Sequence, Iterable
+from typing import *
 
-from statenode import StateNode
-
-Coordinate = TypeVar('Coordinate', bound=Tuple[int,int])
+from search_problem import StateNode, Action
 
 #### Lab 1, Part 1b: Problem Representation #################################################
 
-"""
-A state node for the slide puzzle environment.
-"""
+class Coordinate(NamedTuple, Action):
+    r : int
+    c : int
+
 class SlidePuzzleState(StateNode):
+    """ A state node for the slide puzzle environment. """
 
     """ Type Hints allow for the optional type declaration of "instance variables" this way, like Java.
         It is recommended you list them here:
@@ -27,18 +27,17 @@ class SlidePuzzleState(StateNode):
         """Reads data from a text file and returns a SlidePuzzleState which is an initial state."""
         with open(filename, 'r') as file:
             n = int(file.readline())
-            tiles = tuple(tuple(int(x) for x in file.readline.split()) for i in range(n))
+            tiles = tuple( tuple(int(x) for x in file.readline().split()) for i in range(n))
             # look for the zero 
             for r, row in enumerate(tiles):
                 for c, i in enumerate(row):
                     if i == 0:
-                        empty_pos = (r,c)
                         return SlidePuzzleState( 
                             tiles = tiles,
-                            empty_pos = empty_pos,
+                            empty_pos = Coordinate(r,c),
                             parent = None,
                             last_action = None,
-                            path_length = 0,
+                            depth = 0,
                             path_cost = 0,
                             )
             # If we get here, no zero found
@@ -50,7 +49,7 @@ class SlidePuzzleState(StateNode):
             empty_pos : Coordinate,
             parent : Optional[StateNode], 
             last_action: Optional[Any], 
-            path_length : int, 
+            depth : int, 
             path_cost : float = 0.0) :
         """Creates a SlidePuzzleState that represents a state of the environment and context for how the agent gets 
         to this state (the path, aka a series of state-action transitions).
@@ -60,7 +59,7 @@ class SlidePuzzleState(StateNode):
         tiles -- a tuple grid of integers representing the position of different numbered tiles
         empty_pos -- a coordinate indicating the position of the empty spot (tile 0)
         """
-        super().__init__(parent = parent, last_action = last_action, path_length = path_length, path_cost = path_cost)
+        super().__init__(parent = parent, last_action = last_action, depth = depth, path_cost = path_cost)
         self.tiles = tiles
         self.empty_pos = empty_pos
 
@@ -71,14 +70,14 @@ class SlidePuzzleState(StateNode):
         return len(self.tiles)
 
     def get_tile_at(self, coord : Coordinate) -> int:
-        """ Returns the number of the tile at the given Coordinate (2-tuple of (row, col)) .
+        """ Returns the number of the tile at the given Coordinate.
         If the position is empty, return 0.
         Ideally, this should be done in constant time, not O(N) or O(N^2) time...
         """
         return self.tiles[coord[0]][coord[1]]
 
     def get_empty_pos(self) -> Coordinate:
-        """Returns Coordinate (2-tuple of (row, col)) of the empty tile.
+        """Returns Coordinate of the empty tile.
         Ideally, this should be done in constant time, not O(N) or O(N^2) time...
         """
         return self.empty_pos
@@ -86,13 +85,12 @@ class SlidePuzzleState(StateNode):
     """ Overridden methods from StateNode """
 
     # Override
-    def get_all_features(self) -> Hashable:
+    def get_state_features(self) -> Hashable:
         """Returns a full featured representation of the state.
-
-        This should return something consistent, immutable, and hashable - primitives, strings, and tuples of such (generally no lists or objects).
-                
+        
         If two SlidePuzzleState objects represent the same state, get_features() should return the same for both objects.
-        Note, however, that two states with identical features may have been arrived at from different paths.
+        However, two SlidePuzzleState with identical state features may not represent the same node of the search tree -
+        that is, they may have different parents, last actions, path lengths/costs etc...
         """
         return self.tiles
 
@@ -104,9 +102,8 @@ class SlidePuzzleState(StateNode):
            similar to the file format for initial states
         """
         n = self.get_size()
-        return "\n".join(" ".join("{:2d}".format(self.tile_at(r,c) for c in range(n))) for r in range(n))
-
-
+        return "\n".join(" ".join("{:2d}".format(self.tiles[r][c]) for c in range(n)) for r in range(n))
+    
     # Override
     def is_goal_state(self) -> bool:
         """Returns if a goal (terminal) state. 
@@ -116,7 +113,7 @@ class SlidePuzzleState(StateNode):
         i = 0
         for r in range(self.get_size()):
             for c in range(self.get_size()):
-                if self.tile_at(r,c) != i:
+                if self.tiles[r][c] != i:
                     return False
                 i += 1
         return True
@@ -153,7 +150,9 @@ class SlidePuzzleState(StateNode):
         The action should be described as "Moved tile X" where X is the tile number
         that last got slid into the empty spot.
         """
-        return "Moved tile " + self.parent.get_tile_at(self.last_action) if self.last_action != None else None
+        if self.last_action is None:
+             return None 
+        return "Moved tile {}".format(self.parent.get_tile_at(self.last_action))
 
     # Override
     def get_next_state(self, action : Coordinate) -> SlidePuzzleState:
@@ -170,7 +169,7 @@ class SlidePuzzleState(StateNode):
                         empty_pos = action,
                         parent = self,
                         last_action = action,
-                        path_length = self.path_length + 1,
+                        depth = self.depth + 1,
                         path_cost = self.path_cost + 1,
                         )
 
