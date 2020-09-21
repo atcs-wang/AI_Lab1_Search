@@ -6,7 +6,7 @@ from sys import argv
 from slidepuzzle_problem import *
 from slidepuzzle_heuristics import SLIDEPUZZLE_HEURISTICS
 from search_algorithms import ALGORITHMS, STRATEGIES
-from base_gui import Search_GUI, Search_GUI_Controller
+from search_gui import Search_GUI, Search_GUI_Controller
 
 ### State visualization too big? Change these numbers
 MAX_HEIGHT = 450

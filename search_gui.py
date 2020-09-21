@@ -345,7 +345,7 @@ class Waiting_Base(Status):
     @staticmethod
     def handle_click_canvas(app : Search_GUI_Controller, event = None):
         action = app.gui.click_canvas_to_action(event)
-        if action in app.gui.current_state.get_all_actions():
+        if action is not None and action in app.gui.current_state.get_all_actions():
             app.update_status_and_ui(Interactive_Waiting)
             app.gui.update_state(app.gui.current_state.get_next_state(action), please_draw=True)
             #Small hack...

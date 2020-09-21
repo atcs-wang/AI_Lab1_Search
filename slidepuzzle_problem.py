@@ -48,7 +48,7 @@ class SlidePuzzleState(StateNode):
             tiles : Tuple[Tuple[int, ...], ...],
             empty_pos : Coordinate,
             parent : Optional[StateNode], 
-            last_action: Optional[Any], 
+            last_action: Optional[Coordinate], 
             depth : int, 
             path_cost : float = 0.0) :
         """Creates a SlidePuzzleState that represents a state of the environment and context for how the agent gets 

@@ -7,7 +7,7 @@ from spotlessroomba_problem import *
 from spotlessroomba_heuristics import SPOTLESSROOMBA_HEURISTICS
 from search_algorithms import ALGORITHMS, STRATEGIES
 from roomba_gui import *
-from base_gui import Search_GUI_Controller
+from search_gui import Search_GUI_Controller
 
 ### State visualization too big? Change these numbers
 MAX_HEIGHT = 350

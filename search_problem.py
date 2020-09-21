@@ -17,6 +17,11 @@ class Action:
         """ Returns a string that describes this action """
         raise NotImplementedError
     
+    def __eq__(self, other) -> bool:
+        """ Returns whether other is equivalent in value """
+        if isinstance(other, type(self)) :
+            pass
+        return False
 
 class StateNode:
     """ An abstract object that represents a a state in an environment. 
