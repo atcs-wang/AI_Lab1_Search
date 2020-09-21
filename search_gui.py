@@ -11,8 +11,7 @@ from tkinter import * # Tk, Canvas, Frame, Listbox, Button, Checkbutton, IntVar,
 from typing import *
 
 from search_problem import StateNode, Action
-from search_agents import ALL_AGENTS
-from search_algorithms import GoalSearchAgent
+from search_algorithms import GoalSearchAgent, ALL_AGENTS
 
 INF = float('inf')
 

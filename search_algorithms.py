@@ -3,7 +3,7 @@
 # Email(s): matwan@bergen.org
 
 from __future__ import annotations
-from typing import *
+from typing import List, Collection, Tuple, Callable, Optional, Union, Set, Dict
 import random
 from collections import deque
 # from priorityqueue import priorityqueue
@@ -128,7 +128,7 @@ class TreeSearchAlgorithmMixin(GoalSearchAgent):
             self.total_extends += 1
 
             for neighbor in ext_node.generate_neighbor_states():
-                if neighbor != ext_node.parent:
+                if neighbor != ext_node.parent: # This is the no-backtracking check
                     self.enqueue(neighbor, cutoff)
                     self.total_enqueues += 1
 
@@ -483,3 +483,10 @@ STRATEGIES : Dict[str, Type[GoalSearchAgent] ] = {
     "greedy": GreedyBestSearch,
     "astar": AStarSearch,
 }
+
+
+ALL_AGENTS : Dict[str, Dict[str, Type[GoalSearchAgent] ]] = {}
+for alg in ALGORITHMS:
+    ALL_AGENTS[alg] = {}
+    for strat in STRATEGIES:
+        ALL_AGENTS[alg][strat] = type(alg + "-" + strat, (ALGORITHMS[alg], STRATEGIES[strat]), {})
