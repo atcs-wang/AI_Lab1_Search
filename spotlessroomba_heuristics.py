@@ -1,4 +1,4 @@
-from heuristics import *
+from search_heuristics import *
 from spotlessroomba_problem import *
 
 INF = float('inf')
