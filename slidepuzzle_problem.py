@@ -117,7 +117,7 @@ class SlidePuzzleState(StateNode):
            similar to the file format for initial states
         """
         n = self.get_size()
-        return "\n".join(" ".join("{:2d}".format(self.get_tile_at(Coordinate(r,c)) for c in range(self.get_size())) for r in range(self.get_size())))
+        return "\n".join(" ".join("{:2d}".format(self.get_tile_at(Coordinate(r,c))) for c in range(self.get_size())) for r in range(self.get_size()))
     
     # Override
     def is_goal_state(self) -> bool:
