@@ -19,9 +19,9 @@ class Action:
     
     def __eq__(self, other) -> bool:
         """ Returns whether other is equivalent in value """
-        if isinstance(other, type(self)) :
-            pass
-        return False
+        if not isinstance(other, type(self)) :
+            return False
+        return NotImplementedError
 
 class StateNode:
     """ An abstract object that represents a a state in an environment. 
@@ -111,22 +111,6 @@ class StateNode:
         -- action is assumed legal (is_legal_action called before), but a ValueError may be passed for illegal actions if desired.
         """
         raise NotImplementedError
-
-    ## TODO Should these be left as an exercise for students? Or moved to the algorithms?
-
-    def generate_neighbor_states(self) -> Iterable[StateNode]:
-        """ Generate and return all possible neighbor states (all states that can result from taking legal actions in this state).
-        The generated StateNode objects should have this StateNode as its parent, and action as its last_action.
-
-        This method is a good candidate for using "yield" and writing a generator function instead of returning a list.
-        """
-        for action in self.get_all_actions():
-            yield self.get_next_state(action)
-        ### The above generator definition is equivalent to:
-        # return (self.get_next_state(action) for a in self.get_all_actions())
-        ### If it is better to get a List for the reusability, methods, or indexing:
-        # return [self.get_next_state(action) for a in self.get_all_actions()]
-
     
     def get_path(self) -> Sequence[StateNode]:
         """Returns a sequence (list) of StateNodes representing the path from the initial state to this state.

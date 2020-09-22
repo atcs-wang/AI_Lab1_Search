@@ -1,4 +1,4 @@
-from search_heuristics import *
+from heuristics import *
 from slidepuzzle_problem import *
 
 INF = float('inf')

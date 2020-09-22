@@ -1,30 +1,43 @@
 # Lab 1, Part 1b: Problem Representation.
 # Name(s): SOLUTION
+
 from __future__ import annotations
-from typing import *
+from typing import Optional, Any, Hashable, Sequence, Iterable, Dict, Union, List, Tuple, NamedTuple
 
 from search_problem import StateNode, Action
 
 #### Lab 1, Part 1b: Problem Representation #################################################
 
 class Coordinate(NamedTuple, Action):
+    """ Represents a specific location on the grid with row r and column c
+    Can be created with Coordinate(r=row, c=col), or just Coordinate(row,col).
+    Properties r and c can be accessed with dot notation or as if a tuple (r,c)
+
+    Is also an Action, representing the coordinate of the tile that is to be moved into 
+    the empty space. The first row and column are numbered 0.
+    """
     r : int
     c : int
+
+    def __str__(self):
+        return "(R:{}, C:{})".format(self.r, self.c)
 
 class SlidePuzzleState(StateNode):
     """ A state node for the slide puzzle environment. """
 
-    """ Type Hints allow for the optional type declaration of "instance variables" this way, like Java.
-        It is recommended you list them here:
-    """
-    # TODO Declare instance variables, like:
-    # variable : type
+    # Type Hints allow for the optional type declaration of "instance variables" this way, like Java.
     tiles : Tuple[Tuple[int, ...], ...]
     empty_pos : Coordinate
     
     @staticmethod
-    def readFromFile(filename : str) -> StateNode:
-        """Reads data from a text file and returns a SlidePuzzleState which is an initial state."""
+    def readFromFile(filename : str) -> SlidePuzzleState:
+        """Reads data from a text file and returns a SlidePuzzleState which is an initial state.
+        The file format is simple: the first line has a number, which is the N, 
+        the # of rows/columns of the puzzle (all puzzles are square). 
+        There are then N lines with N numbers (space delimited), 
+        representing the initial configuration of the tiles in the grid. 
+        The number 0 represents the blank tile. 
+        """
         with open(filename, 'r') as file:
             n = int(file.readline())
             tiles = tuple( tuple(int(x) for x in file.readline().split()) for i in range(n))
@@ -74,7 +87,7 @@ class SlidePuzzleState(StateNode):
         If the position is empty, return 0.
         Ideally, this should be done in constant time, not O(N) or O(N^2) time...
         """
-        return self.tiles[coord[0]][coord[1]]
+        return self.tiles[coord.r][coord.c]
 
     def get_empty_pos(self) -> Coordinate:
         """Returns Coordinate of the empty tile.
@@ -86,7 +99,9 @@ class SlidePuzzleState(StateNode):
 
     # Override
     def get_state_features(self) -> Hashable:
-        """Returns a full featured representation of the state.
+        """Returns a full featured representation of the state. 
+
+        In the case of the slide puzzle, the current positions of all the tiles are the features.
         
         If two SlidePuzzleState objects represent the same state, get_features() should return the same for both objects.
         However, two SlidePuzzleState with identical state features may not represent the same node of the search tree -
@@ -102,13 +117,13 @@ class SlidePuzzleState(StateNode):
            similar to the file format for initial states
         """
         n = self.get_size()
-        return "\n".join(" ".join("{:2d}".format(self.tiles[r][c]) for c in range(n)) for r in range(n))
+        return "\n".join(" ".join("{:2d}".format(self.get_tile_at(Coordinate(r,c)) for c in range(self.get_size())) for r in range(self.get_size())))
     
     # Override
     def is_goal_state(self) -> bool:
         """Returns if a goal (terminal) state. 
-        The goal of the slide puzzle is to have the empty spot in the 0th row and col,
-        and then the rest of the numbered tiles in row-major order!
+        The goal of the slide puzzle is to have the empty spot in the 0th row and 0th col,
+        and then the rest of the numbered tiles in order down the rows!
         """
         i = 0
         for r in range(self.get_size()):
@@ -124,12 +139,10 @@ class SlidePuzzleState(StateNode):
 
         Actions in the slide puzzle environment involve moving a tile into
         the adjacent empty spot.
-        It is up to the coder to define a datatype for representing actions,
-        and also then what constitutes a legal action in a state.
         
-        One possible way to represent action is as the Coordinate of the tile that
-        is to be moved into the empty slot. It needs to be not out of bounds, and 
-        actually adjacent.
+        Actions are Coordinate objects, specifying the position of the tile that
+        is to be moved into the empty slot. That Coordinate needs to be not out of bounds, and 
+        actually adjacent to the emty slot.
         """
         return self.is_inbounds(action) and (
             abs(action[0] - self.empty_pos[0]) + abs(action[1] - self.empty_pos[1])) == 1
@@ -138,7 +151,7 @@ class SlidePuzzleState(StateNode):
     def get_all_actions(self) -> Iterable[Coordinate]:
         """Return all legal actions at this state."""
         for dr, dc in ((0,1), (-1,0), (0,-1), (1,0)):
-            action = (self.empty_pos[0] + dr, self.empty_pos[1] + dc)
+            action = Coordinate(self.empty_pos[0] + dr, self.empty_pos[1] + dc)
             if self.is_inbounds(action):
                 yield action
 

@@ -169,3 +169,9 @@ class GraphState(StateNode):
                         depth = self.depth + 1,
                         path_cost = self.path_cost + self.graph[self.this_state][action.state],
                         )
+
+    def __lt__(self, other) -> bool:
+        """
+        For tiebreakers, apply priority in alphabetical order.
+        """
+        return self.this_state < other.this_state

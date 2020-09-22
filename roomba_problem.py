@@ -15,6 +15,13 @@ DIRTY_CARPET : Terrain = '+'
 TRANSITION_COSTS : Dict[Terrain, float]= {FLOOR: 1, CARPET: 2, WALL: 0, DIRTY_FLOOR: 1, DIRTY_CARPET: 2}
 
 class Coordinate(NamedTuple, Action):
+    """ Represents a specific location on the grid with row r and column c
+    Can be created with Coordinate(r=row, c=col), or just Coordinate(r,c).
+    Properties r and c can be accessed with dot notation or as if a tuple (r,c)
+    
+    Is also an Action, representing the *relative* coordinate a Roomba is trying to move - that is, the 
+    number of rows down and columns right the roomba is trying to move. 
+    """
     row : int
     col : int
 
@@ -135,6 +142,10 @@ class RoombaState(StateNode):
         for action in ALL_ACTIONS:
             if self.is_legal_action(action):
                 yield action
+        ### The above generator definition is equivalent to:
+        # return (a for a in ALL_ACTIONS if self.is_legal_action(a))
+        ### If it is better to get a List for the reusability, methods, or indexing:
+        # return [a for a in ALL_ACTIONS if self.is_legal_action(a)]
 
     # Override
     def describe_last_action(self) -> str:

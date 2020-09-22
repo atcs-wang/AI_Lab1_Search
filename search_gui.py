@@ -383,6 +383,7 @@ class Finished_Success_Waiting(Waiting_Base):
     @staticmethod
     def get_status_text(alg : str):
         return "{} finished successfully!".format(alg)
+    @staticmethod
     def update_ui(gui : Search_GUI):
         Waiting_Base.update_ui(gui)
         gui.run_pause_button['state'] = DISABLED
@@ -693,9 +694,9 @@ class Search_GUI_Controller:
 
         if not self.verify_and_update_parameters(status):
             return 
+        self.current_agent = self.get_agent_selection()
         self.update_status_and_ui(status)
         try:
-            self.current_agent = self.get_agent_selection()
             self.run_search()
         except Exception:
             print(format_exc())
