@@ -43,8 +43,8 @@ class SlidePuzzleState(StateNode):
             # TODO read file and return an initial SlidePuzzleState.
             # This return statement is just a dummy.
             return SlidePuzzleState( 
-                tiles = tuple(tuple(0,)),
-                empty_pos = Coordinate(0,0),
+                tiles = ((0,),), # tuple of tuple of 0, dummy value
+                empty_pos = Coordinate(0,0), # dummy value
                 parent = None,
                 last_action = None,
                 depth = 0,
@@ -113,7 +113,7 @@ class SlidePuzzleState(StateNode):
            similar to the file format for initial states
         """
         n = self.get_size()
-        return "\n".join(" ".join("{:2d}".format(self.get_tile_at(Coordinate(r,c)) for c in range(self.get_size())) for r in range(self.get_size())))
+        return "\n".join(" ".join("{:2d}".format(self.get_tile_at(Coordinate(r,c))) for c in range(n)) for r in range(n))
     
     # Override
     def is_goal_state(self) -> bool:
