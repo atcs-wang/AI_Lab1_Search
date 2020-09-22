@@ -398,6 +398,13 @@ class Finished_Failure_Waiting(Waiting_Base):
     def get_status_text(alg : str):
         return "{} finished unsuccessfully.".format(alg)
 
+    @staticmethod
+    def update_ui(gui : Search_GUI):
+        Waiting_Base.update_ui(gui)
+        gui.run_pause_button['state'] = DISABLED
+        gui.step_button['state'] = DISABLED
+        gui.fly_blind_search_button['state'] = DISABLED        
+
 class Terminated_Waiting(Waiting_Base):
     @staticmethod
     def is_valid_transition_to(next_status: Type[Status]):
@@ -569,7 +576,7 @@ class Running_Blind(Running_Base):
 class Running_Terminating(Running_Base):
     @staticmethod
     def is_valid_transition_to(next_status: Type[Status]):
-        return next_status in (Terminated_Waiting, Algorithm_Error)
+        return next_status in (Terminated_Waiting, Algorithm_Error, Finished_Failure_Waiting, Finished_Success_Waiting)
 
     @staticmethod
     def get_status_text(alg : str):
@@ -712,22 +719,24 @@ class Search_GUI_Controller:
                                                                 cutoff = self.gui.get_cutoff())   
         elapsed_time = time() - start_time
 
-        print("\n{} ran for {:.4f} seconds.".format(type(self.current_agent).__name__, elapsed_time))
+        print("{} ran for {:.4f} seconds.".format(type(self.current_agent).__name__, elapsed_time))
 
         self.gui.update_agent(self.current_agent, please_print=True)
         if solution_state is not None:
+            print(solution_state)
             self.gui.update_state(solution_state, please_draw=True, please_print=True, please_analyze=True)  
+            if solution_state.is_goal_state():
+                self.update_status_and_ui(Finished_Success_Waiting)
+            else:
+                self.update_status_and_ui(Finished_Failure_Waiting)
         else:
             self.gui.update_state(self.initial_state, please_draw=True, please_print=True, please_analyze=True)  
-        
-        if self.status is Running_Terminating:
-            self.update_status_and_ui(Terminated_Waiting)
-        else:
-            if solution_state is None or not solution_state.is_goal_state():
-                self.update_status_and_ui(Finished_Failure_Waiting)
+            if self.status is Running_Terminating:
+                self.update_status_and_ui(Terminated_Waiting)
             else:
-                self.update_status_and_ui(Finished_Success_Waiting)
-
+                self.update_status_and_ui(Finished_Failure_Waiting)
+            
+            
         self.sleep_update_tk(.1)
 
     def sleep_update_tk(self, secs : float, interval : float = .05):

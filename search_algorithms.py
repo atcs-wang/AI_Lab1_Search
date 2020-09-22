@@ -410,7 +410,7 @@ class AnytimeSearchAlgorithm(InformedSearchAgent):
         *Closest according to the agent's heuristic.
         """
         # Keep track of the closest path found yet
-        anytime_result  : Tuple[StateNode, float] = (None, INF) 
+        anytime_result  : Tuple[StateNode, float, float] = (None, INF, INF) 
         ext_filter : Set[StateNode] = set() 
         self.enqueue(initial_state)
         while self.frontier: 
@@ -426,8 +426,8 @@ class AnytimeSearchAlgorithm(InformedSearchAgent):
             
             # Check if new best anytime option
             dist = self.heuristic(ext_node)
-            if dist <= anytime_result[1] and ext_node.path_cost < anytime_result[1].path_cost:
-                anytime_result = (ext_node, dist)
+            if dist < anytime_result[1] or (dist == anytime_result[1] and ext_node.path_cost < anytime_result[2]):
+                anytime_result = (ext_node, dist, ext_node.path_cost)
 
             if(gui_callback_fn(ext_node)):
                 break
