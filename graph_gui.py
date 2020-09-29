@@ -51,9 +51,9 @@ class Graph_GUI(Search_GUI):
         self.canvas.create_arc(x1,y1,x2,y2,start=180, extent=180, width = 3, style=ARC, outline=COLORS[tag], tag=tag)
         if weight:
             if c2 > c1:
-                self.canvas.create_text((x1+x2)/2, y2, text= ">{}>".format(weight), fill = COLORS[tag] ,font = ('Times New Roman', 8, 'normal' ), anchor= N, tag= tag)
+                self.canvas.create_text((x1+x2)/2, y2, text= ">{}>".format(weight), fill = COLORS[tag] ,font = ('Times New Roman', self.text_size , 'normal' ), anchor= N, tag= tag)
             else:
-                self.canvas.create_text((x1+x2)/2, y2, text="<{}<".format(weight), fill = COLORS[tag] ,font = ('Times New Roman', 8, 'normal' ), anchor= S, tag= tag)
+                self.canvas.create_text((x1+x2)/2, y2, text="<{}<".format(weight), fill = COLORS[tag] ,font = ('Times New Roman', self.text_size, 'normal' ), anchor= S, tag= tag)
 
     #Override
     def draw_state(self):
@@ -89,7 +89,7 @@ class Graph_GUI(Search_GUI):
         self.canvas.delete(TILE)
         self.canvas.delete(TRANSITIONS)
         
-        text_size = self.canvas.winfo_width() // (self.num_states * 2)
+        self.text_size = self.canvas.winfo_width() // (self.num_states * 6)
         
         # Draw all transitions as arcs, with costs
         for c, state in enumerate(self.state_list):
@@ -104,9 +104,9 @@ class Graph_GUI(Search_GUI):
             self.canvas.create_rectangle(*box_coords, fill= COLORS[TILE], tag=TILE)
             center_coords = self.calculate_center_coords(0,c)
             self.canvas.create_text(*center_coords, text=state, fill= COLORS[TEXT], anchor=S,
-                                    font = ('Times New Roman', text_size //2, 'bold' ), tag=TEXT)
+                                    font = ('Times New Roman', self.text_size, 'bold' ), tag=TEXT)
             self.canvas.create_text(*center_coords, text="H: " + str(self.current_state.heuristics[state]), fill= COLORS[TEXT], anchor=N,
-                                    font = ('Times New Roman', text_size//4, 'bold' ), tag=TEXT)
+                                    font = ('Times New Roman', self.text_size, 'bold' ), tag=TEXT)
             
         
 

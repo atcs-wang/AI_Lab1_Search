@@ -1,4 +1,4 @@
-# Lab 1, Part 2a: Heuristics.
+# Lab 1 (Part 1a and 2a)
 # Name(s): 
 
 from __future__ import annotations
@@ -392,8 +392,7 @@ for alg in ALGORITHMS:
 
 ### Completely Optional Extensions ########################################################
 
-""" If you're bored, try any of the following extensions!
-"""
+""" If you're bored, try any of the following extensions!"""
 
 
 """ A) Investigate a way to determine if a given slide puzzle is solvable without exhausting the whole state space.

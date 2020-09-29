@@ -76,7 +76,13 @@ class SpotlessRoombaState(RoombaState):
 
 
     """ Overridden methods from RoombaState and StateNode """
-   
+    
+    # Override   
+    def get_terrain(self, coord : Coordinate) -> Terrain:
+        terrain = self.grid[coord.row][coord.col]
+        return DIRTY_TERRAIN[terrain] if coord in self.dirty_locations else terrain 
+
+
     # Override
     def get_state_features(self) :
         """Returns a full feature representation of the state.

@@ -175,6 +175,8 @@ class DepthFirstSearch(GoalSearchAgent):
         """  Choose, remove, and return the MOST RECENTLY ADDED state from the frontier."""
         return self.frontier.pop()
 
+
+
 class BreadthFirstSearch(GoalSearchAgent):
     """ Partial class representing the Breadth First Search strategy.
     To be subclassed (multiple inheritance) with a mixin that
@@ -203,6 +205,7 @@ class BreadthFirstSearch(GoalSearchAgent):
     def dequeue(self) -> StateNode:
         """  Choose, remove, and return the LEAST RECENTLY ADDED state from the frontier."""
         return self.frontier.popleft()
+
 
 
 class UniformCostSearch(GoalSearchAgent):
@@ -443,13 +446,126 @@ class AnytimeSearchAlgorithm(InformedSearchAgent):
         return anytime_result[0]
 
 
+# Extra stuff added:
+EXTRA_STUFF = True
+
+class DepthFirstSearch_PQ(GoalSearchAgent):
+    """ DFS implemented with a Priority Queue. 
+    This implementation will tie-break based on natural ordering of states, as defined in the 
+    __lt__() function.
+    """   
+    frontier : List[Tuple[float, StateNode]]
+    
+    def __init__(self,*args, **kwargs):
+        """ Initialize self.total_extends and self.total_enqueues (done in super().__init__())
+        Create an empty frontier queue.
+        """
+        super().__init__(*args, **kwargs)
+        self.frontier = []
+
+        
+    def enqueue(self, state: StateNode, cutoff: Union[int, float] = INF):
+        """ Add the state to the frontier, unless path COST exceeds the cutoff 
+        The priority is negatve depth, so the deepest node has priority.
+        """
+        if state.depth < cutoff:
+            heapq.heappush(self.frontier, (-state.depth, state))
+
+        
+    def dequeue(self) -> StateNode:
+        """  Choose, remove, and return the state with  so the DEEPEST node is dequeued from the frontier."""
+        return heapq.heappop(self.frontier)[1]
+
+class BreadthFirstSearch_PQ(GoalSearchAgent):
+    """ BFS implemented with a Priority Queue. 
+    This implementation will tie-break based on natural ordering of states, as defined in the 
+    __lt__() function.
+    """   
+    frontier : List[Tuple[float, StateNode]]
+    
+    def __init__(self,*args, **kwargs):
+        """ Initialize self.total_extends and self.total_enqueues (done in super().__init__())
+        Create an empty frontier queue.
+        """
+        super().__init__(*args, **kwargs)
+        self.frontier = []
+
+        
+    def enqueue(self, state: StateNode, cutoff: Union[int, float] = INF):
+        """ Add the state to the frontier, unless path COST exceeds the cutoff 
+        The priority is depth, so the shallowest node has priority.
+        """
+        if state.depth < cutoff:
+            heapq.heappush(self.frontier, (state.depth, state))
+
+        
+    def dequeue(self) -> StateNode:
+        """  Choose, remove, and return the state with  so the SHALLOWEST node is dequeued from the frontier."""
+        return heapq.heappop(self.frontier)[1]
+
+
+
+class TreeSearchNoTailBiteAlgorithm(GoalSearchAgent):
+    """
+    Mixin class for the tree search algorithm (without tail-biting).
+
+    Needs to be mixed in with a "strategy" subclass of GoalSearchAgent that
+    implements the other methods (i.e. RandomSearch, DFS, BFS, UCS, etc.)
+    """
+    def search(self, 
+            initial_state : StateNode, 
+            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            cutoff : Union[int, float] = INF 
+            ) -> Optional[StateNode]:
+        """ Perform a search from the initial_state. Here is the pseudocode:
+        
+        - Enqueue the initial_state in the frontier
+        - Repeat while there are still StateNodes in the frontier:
+            1) Dequeue a StateNode
+            2) If the StateNode is a goal state, return it (end the search)
+            3*) Call gui_callback_fn, passing it the dequeued StateNode. If it returns True, 
+                end the search (the user has terminated early)
+            4) Extend the dequeued state by enqueueing all its neighboring states. 
+                - Implement the "no TAIL BITE" optimization: do not enqueue parent states 
+                - Pass the cutoff parameter to enqueue. 
+                - Update self.total_extends and self.total_enqueues appropriately
+        - If the search ends because the frontier is empty or gui_callback_fn ended the search
+        early, return None.
+
+        Remember that "tree search" may re-enqueue or re-extend the same state, multiple times.
+        """
+        self.enqueue(initial_state)
+        while self.frontier: #while frontier is not empty (returns False when empty)
+            ext_node = self.dequeue()       # pop from queue and extend
+
+            if ext_node.is_goal_state():
+                return ext_node 
+
+            if(gui_callback_fn(ext_node)):
+                break
+
+            self.total_extends += 1
+
+            for neighbor in generate_neighbor_states(ext_node):
+                if neighbor not in ext_node.get_path(): # This is the no-tail-bite check. Its very not efficient.
+                    self.enqueue(neighbor, cutoff)
+                    self.total_enqueues += 1
+
+        return None # if frontier ever empties without finding the goal, search has failed
+
+
+
 # Collection of all the above 
 
 ALGORITHMS : Dict[str, Type[GoalSearchAgent] ] = {
     "tree": TreeSearchAlgorithm, 
     "graph": GraphSearchAlgorithm, 
-    "anytime" : AnytimeSearchAlgorithm
+    "anytime" : AnytimeSearchAlgorithm,
 }
+
+if EXTRA_STUFF:
+    ALGORITHMS["tree-no-tail-bite"] = TreeSearchNoTailBiteAlgorithm
+
 
 STRATEGIES : Dict[str, Type[GoalSearchAgent] ] = {
     "random": RandomSearch,
@@ -459,6 +575,11 @@ STRATEGIES : Dict[str, Type[GoalSearchAgent] ] = {
     "greedy": GreedyBestSearch,
     "astar": AStarSearch,
 }
+
+if EXTRA_STUFF:
+    STRATEGIES["dfs-pq"] = DepthFirstSearch_PQ
+    STRATEGIES["bfs-pq"] = BreadthFirstSearch_PQ
+
 
 """
 Dynamically generate all class types that result from mixing the ALGORITHMS with the STRATEGIES

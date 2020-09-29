@@ -3,8 +3,6 @@ from spotlessroomba_problem import *
 
 INF = float('inf')
 
-# Make updates to RoombaState in state.py
-# to accomodate multiple dirt spots that all must be cleaned.
 
 def roomba_remaining_count(state : SpotlessRoombaState)  -> float:
     # TODO

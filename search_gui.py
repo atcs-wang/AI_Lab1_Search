@@ -723,7 +723,6 @@ class Search_GUI_Controller:
 
         self.gui.update_agent(self.current_agent, please_print=True)
         if solution_state is not None:
-            print(solution_state)
             self.gui.update_state(solution_state, please_draw=True, please_print=True, please_analyze=True)  
             if solution_state.is_goal_state():
                 self.update_status_and_ui(Finished_Success_Waiting)
