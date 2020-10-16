@@ -5,6 +5,8 @@ from typing import Optional, Any, Hashable, Sequence, Iterable, Dict, Union, Lis
 from search_problem import StateNode, Action
 from collections import OrderedDict
 
+PRINT_AS_PATH = True
+
 ### A generic graph traversal problem. 
 
 class GraphAction(Action):
@@ -107,7 +109,10 @@ class GraphState(StateNode):
            This should return N lines of N numbers each, separated by whitespace,
            similar to the file format for initial states
         """
-        return self.this_state
+        if PRINT_AS_PATH:
+            return "-".join(s.this_state for s in self.get_path())
+        else: 
+            return self.this_state
     
     # Override
     def is_goal_state(self) -> bool:

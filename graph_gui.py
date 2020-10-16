@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import *
-from tkinter import filedialog, Tk, ARC, N, S
+from tkinter import filedialog, Tk, ARC, N, S, Label, NW, LEFT
 from os import getcwd
 from sys import argv
 from graph_problem import *
 from graph_heuristics import GRAPH_HEURISTICS
-from search_algorithms import ALGORITHMS, STRATEGIES
+from graph_search_algorithms import ALGORITHMS, STRATEGIES, PRINT_STUFF, ALL_AGENTS
 from search_gui import Search_GUI, Search_GUI_Controller
 
 ### State visualization too big? Change these numbers
@@ -27,6 +27,10 @@ class Graph_GUI(Search_GUI):
         self.state_list : List[str] = [x for x in initial_state.graph.keys()]
         super().__init__(canvas_height = MAX_HEIGHT, canvas_width = MAX_WIDTH, algorithm_names = algorithm_names , strategy_names = strategy_names, heuristics = heuristics)
         self.title("Graph Search Visualizer")
+        # added visualization for printing enqueued, extended 
+        if PRINT_STUFF :
+            self.enqueue_extend_list_label = Label(self, text="Extends: \nEnqueues: \n", justify= LEFT)
+            self.enqueue_extend_list_label.grid(row = 100, columnspan = 10, sticky = NW)
 
     def calculate_box_coords(self, r : int, c : int) -> Tuple[int, int, int, int]:
         w = self.canvas.winfo_width() # Get current width of canvas
@@ -120,6 +124,12 @@ class Graph_GUI(Search_GUI):
         col = event.x // (w //  self.num_states)
         return GraphAction(self.state_list[col])
 
+    #Override
+    def update_agent(self, agent : GoalSearchAgent, please_print: Optional[bool] = None):
+        super().update_agent(agent, please_print)
+        if PRINT_STUFF and please_print is not False:
+            self.enqueue_extend_list_label['text'] = "Extends: {}\nEnqueues: {}\n".format(agent.get_extend_list(), agent.get_enqueue_list())
+
 
 if __name__ == "__main__":
     if len(argv) > 1:
@@ -131,5 +141,5 @@ if __name__ == "__main__":
         initroot.destroy()
     initial_state = GraphState.readFromFile(file_path)
     gui = Graph_GUI(initial_state,algorithm_names=ALGORITHMS.keys(), strategy_names=STRATEGIES.keys(), heuristics=GRAPH_HEURISTICS)
-    controller = Search_GUI_Controller(gui, initial_state, GRAPH_HEURISTICS)
+    controller = Search_GUI_Controller(gui, initial_state, GRAPH_HEURISTICS, all_agents= ALL_AGENTS)
     gui.mainloop()

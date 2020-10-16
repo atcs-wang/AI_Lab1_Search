@@ -640,8 +640,9 @@ class Search_GUI_Controller:
     current_agent : GoalSearchAgent
     heuristics : Dict[str, Callable[[StateNode], float]]
 
-    def __init__(self, gui: Search_GUI, initial_state: StateNode, heuristics : Dict[str,Callable[[StateNode], float]]):
+    def __init__(self, gui: Search_GUI, initial_state: StateNode, heuristics : Dict[str,Callable[[StateNode], float]], all_agents : Dict[str,Dict[str, GoalSearchAgent]] = ALL_AGENTS):
         self.gui = gui
+        self.all_agents = all_agents
         self.initial_state = initial_state
         self.heuristics = heuristics
         self.gui.update_state(initial_state, please_draw=True, please_print=True, please_analyze=False)
@@ -692,7 +693,7 @@ class Search_GUI_Controller:
     def get_agent_selection(self) -> GoalSearchAgent:
         alg = self.gui.get_algorithm_selection()
         strat = self.gui.get_strategy_selection()
-        agent_class = ALL_AGENTS[alg][strat]
+        agent_class = self.all_agents[alg][strat]
         return agent_class(heuristic = self.gui.get_heuristic_selection())
 
 
