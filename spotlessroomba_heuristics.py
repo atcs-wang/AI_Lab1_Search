@@ -15,10 +15,9 @@ def roomba_distance_to_closest(state : SpotlessRoombaState)  -> float:
     locs = state.dirty_locations
     if len(locs) == 0:
         return 0
-    pos_r, pos_c = state.position
     # get list of 
     # min of manhattan distance to each dirty:
-    return min(abs(r - pos_r) + abs(c - pos_c) for r,c in locs)
+    return min(abs(dirt.row - state.position.row) + abs(dirt.col - state.position.col) for dirt in locs)
 
 def roomba_distance_to_closest_plus_count(state : SpotlessRoombaState)  -> float:
     # TODO
@@ -37,9 +36,9 @@ def roomba_manhattan_bounding_box(state : SpotlessRoombaState)  -> float:
     if len(locs) == 0:
         return 0
     
-    rows = [r for r,c in locs]
+    rows = [c.row for c in locs]
     max_r, min_r = max(rows), min(rows)
-    cols = [c for r,c in locs]
+    cols = [c.col for c in locs]
     max_c, min_c = max(cols), min(cols)
     return (max_c - min_c) + (max_r - min_r)
 
@@ -54,11 +53,8 @@ def roomba_distance_to_farthest(state : SpotlessRoombaState)  -> float:
     locs = state.dirty_locations
     if len(locs) == 0:
         return 0
-    pos_r, pos_c = state.position
-    # get list of manhattan distance to each goal
-    manhats = [abs(r - pos_r) + abs(c - pos_c) for r,c in locs]
-    # min of the following:
-    return max(manhats)
+    # get max of list of manhattan distances to each goal
+    return max(abs(dirt.row - state.position.row) + abs(dirt.col - state.position.col) for dirt in locs)
 
 
 def roomba_multi_heuristic(state : SpotlessRoombaState) -> float:

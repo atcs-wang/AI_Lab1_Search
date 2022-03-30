@@ -14,7 +14,9 @@ class SpotlessRoombaState(RoombaState):
     """
 
     dirty_locations : Tuple[Coordinate,...]
-
+    # These are already mentioned in the superclasses, but more specifically typed here
+    parent : Optional[SpotlessRoombaState]
+     
     #Overridden
     @staticmethod
     def readFromFile(filename : str) -> SpotlessRoombaState:
@@ -45,7 +47,7 @@ class SpotlessRoombaState(RoombaState):
                         dirty.append(Coordinate(i,j))
 
             # Now re-do the grid with the dirty spots changed to their clean counterparts
-            grid = tuple( tuple(CLEAN_TERRAIN.get(x, x) for x in row) for row in grid)
+            grid = tuple( tuple(CLEAN_TERRAIN.get(Terrain(x), Terrain(x)) for x in row) for row in grid)
 
             return SpotlessRoombaState(dirty_locations = tuple(dirty),
                                 position = Coordinate(init_r, init_c),
@@ -61,7 +63,7 @@ class SpotlessRoombaState(RoombaState):
                 position: Coordinate, 
                 grid: Tuple[Tuple[Terrain,...],...], 
                 parent : Optional[SpotlessRoombaState], 
-                last_action: Optional[Coordinate],  #Note that actions are (relative) Coordinates!
+                last_action: Optional[RoombaAction],  #Note that actions are (relative) Coordinates!
                 depth : int, 
                 path_cost : float = 0.0) :
         """
@@ -104,9 +106,9 @@ class SpotlessRoombaState(RoombaState):
         """Return a string representation of the state."""
         s = list(super().__str__()) 
         # Draw all dirty spots 
-        for r, c in self.dirty_locations:
-            pos = r * (self.get_width()+1) + c
-            s[pos] = DIRTY_TERRAIN.get(s[pos],s[pos])
+        for coord in self.dirty_locations:
+            pos = coord.row * (self.get_width()+1) + coord.col
+            s[pos] = DIRTY_TERRAIN.get(Terrain(s[pos]),Terrain(s[pos]))
         return "".join(s)
 
     # Override
@@ -118,13 +120,13 @@ class SpotlessRoombaState(RoombaState):
         return len(self.dirty_locations) == 0
 
     # Override
-    def get_next_state(self, action : Coordinate) -> SpotlessRoombaState:
+    def get_next_state(self, action : RoombaAction) -> SpotlessRoombaState:
         """ Return a new SpotlessRoombaState that represents the state that results from taking the given action from this state.
         The new SpotlessRoombaState object should have this (self) as its parent, and action as its last_action.
 
         -- action is assumed legal (is_legal_action called before)
         """
-        new_pos = add(self.position, action)
+        new_pos = action.applyTo(self.position)
         step_cost = TRANSITION_COSTS[self.get_terrain(new_pos)]
         # If moving onto a dirty spot, it gets cleaned!
         return SpotlessRoombaState( 

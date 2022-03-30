@@ -19,7 +19,7 @@ COLORS[TEXT] = 'black'
 class SpotlessRoomba_GUI(Roomba_GUI):
 
     current_state : SpotlessRoombaState
-
+    
     def __init__(self, initial_state : SpotlessRoombaState, algorithm_names : Sequence[str], strategy_names : Sequence[str], heuristics : Dict[str,Callable[[StateNode], float]]):
         super().__init__(initial_state = initial_state, algorithm_names = algorithm_names , strategy_names = strategy_names, heuristics = heuristics)
         self.title("Spotless Roomba Search Visualizer")
@@ -30,14 +30,14 @@ class SpotlessRoomba_GUI(Roomba_GUI):
         self.canvas.delete('dirt')
 
         # roomba agent
-        x1, y1, x2, y2 = self.calculate_box_coords(*self.current_state.position)
+        x1, y1, x2, y2 = self.calculate_box_coords(self.current_state.position)
         # self.canvas.create_oval(x1, y1, x2, y2, fill= '', outline = COLORS[SEEN], tag= SEEN)
-        self.canvas.create_oval(x1, y1, x2, y2, fill= COLORS[AGENT], tag=AGENT)
+        self.canvas.create_oval(x1, y1, x2, y2, fill= COLORS[AGENT], tags=AGENT)
 
         #Draw remaining dirt
         maze = self.current_state.grid
-        for r,c in self.current_state.dirty_locations:
-            self.canvas.create_rectangle(*self.calculate_box_coords(r,c), fill= COLORS[DIRTY_TERRAIN[maze[r][c]]], tag='dirt')
+        for coord in self.current_state.dirty_locations:
+            self.canvas.create_rectangle(*self.calculate_box_coords(coord), fill= COLORS[DIRTY_TERRAIN[maze[coord.row][coord.col]]], tags='dirt')
 
         self.canvas.delete(PATH)
         self.canvas.delete(START)
@@ -49,22 +49,21 @@ class SpotlessRoomba_GUI(Roomba_GUI):
     
     #Override
     def draw_path(self):
-
-        path : Sequence[SpotlessRoombaState] = self.current_state.get_path()
-        path_coords = [self.calculate_center_coords(*state.position)
+        path : Sequence[SpotlessRoombaState] = cast(Sequence[SpotlessRoombaState], self.current_state.get_path())
+        path_coords = [self.calculate_center_coords(state.position)
                         for state in path]
-        self.canvas.create_line(path_coords, fill = COLORS[PATH], width = 3, tag=PATH)
+        # This line breaks the type checkers, but create_line will flatten the list of tuples..
+        self.canvas.create_line(path_coords, fill = COLORS[PATH], width = 3, tags=PATH, )  # type: ignore
         
         # Draw outline of initial roomba position at the start of the path
-        x1, y1, x2, y2 = self.calculate_box_coords(*path[0].position)
-        self.canvas.create_oval(x1, y1, x2, y2, fill= '', outline = COLORS[START], tag= START)
+        self.canvas.create_oval(self.calculate_box_coords(path[0].position), fill= '', outline = COLORS[START], tags= START)
         
         #Draw numbers on cleaned up spots.
         dirt_count = 1
         text_size = self.canvas.winfo_height() // (self.height * 2)
         for state, coord in zip(path[1:], path_coords[1:]):
-            if state.position in state.parent.dirty_locations:
-                self.canvas.create_text(coord, fill = COLORS[TEXT], tag = TEXT,
+            if state.parent is not None and state.position in state.parent.dirty_locations:
+                self.canvas.create_text(coord, fill = COLORS[TEXT], tags = TEXT,
                         text = str(dirt_count), font = ('Times New Roman', text_size, 'bold' ))
                 dirt_count += 1
             
@@ -78,6 +77,6 @@ if __name__ == "__main__":
         file_path = filedialog.askopenfilename(title = "Open Roomba File",initialdir = getcwd(), filetypes=[("Roomba", ".roomba"), ("Text", ".txt")])
         initroot.destroy()
     initial_state = SpotlessRoombaState.readFromFile(file_path)
-    gui = SpotlessRoomba_GUI(initial_state,algorithm_names=ALGORITHMS.keys(), strategy_names=STRATEGIES.keys(), heuristics=SPOTLESSROOMBA_HEURISTICS)
+    gui = SpotlessRoomba_GUI(initial_state,algorithm_names=list(ALGORITHMS.keys()), strategy_names=list(STRATEGIES.keys()), heuristics=SPOTLESSROOMBA_HEURISTICS)
     controller = Search_GUI_Controller(gui, initial_state, SPOTLESSROOMBA_HEURISTICS)
     gui.mainloop()
