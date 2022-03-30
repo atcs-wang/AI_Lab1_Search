@@ -44,7 +44,7 @@ class GoalSearchAgent():
 
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ To be overridden by algorithm subclasses (TreeSearchAgent, GraphSearchAgent, AnytimeSearchAlgorithm)
@@ -90,7 +90,7 @@ class TreeSearchAlgorithm(GoalSearchAgent):
     """
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ Perform a search from the initial_state. Here is the pseudocode:
@@ -222,7 +222,7 @@ class GraphSearchAlgorithm(GoalSearchAgent):
     """
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ Perform a search from the initial_state, which constitutes the initial frontier.
@@ -349,7 +349,7 @@ class AnytimeSearchAlgorithm(InformedSearchAgent):
 
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ Perform an "Anytime" search from the initial_state
