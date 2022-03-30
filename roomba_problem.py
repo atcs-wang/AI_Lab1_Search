@@ -1,39 +1,70 @@
 from __future__ import annotations
-from typing import Optional, Tuple, Dict, Any, Hashable, Sequence, Iterable, NamedTuple, TypeVar
+from typing import Optional, Tuple, Dict, Any, Hashable, Iterable, NewType
 
 from search_problem import StateNode, Action
 
-Terrain = TypeVar('Terrain', bound=str)
+""" Define terrain types (just an alias for string)"""
+Terrain = NewType('Terrain',str)
 
-FLOOR : Terrain = '.'
-CARPET  : Terrain = '~'
-WALL : Terrain = '#'
-DIRTY_FLOOR : Terrain = '?'
-DIRTY_CARPET : Terrain = '+'
+FLOOR = Terrain('.')
+CARPET = Terrain('~')
+WALL = Terrain('#')
+DIRTY_FLOOR = Terrain('?')
+DIRTY_CARPET = Terrain('+')
 
 """The cost to move onto different types of terrain."""
 TRANSITION_COSTS : Dict[Terrain, float]= {FLOOR: 1, CARPET: 2, WALL: 0, DIRTY_FLOOR: 1, DIRTY_CARPET: 2}
 
-class Coordinate(NamedTuple, Action):
+class Coordinate:
     """ Represents a specific location on the grid with row r and column c
     Can be created with Coordinate(r=row, c=col), or just Coordinate(r,c).
-    Properties r and c can be accessed with dot notation or as if a tuple (r,c)
-    
-    Is also an Action, representing the *relative* coordinate a Roomba is trying to move - that is, the 
-    number of rows down and columns right the roomba is trying to move. 
+    Properties row and col can be accessed via dot notation.
     """
     row : int
     col : int
+    def __init__(self, row : int, col : int):
+        self.row = row
+        self.col = col
 
+    #Override
     def __str__(self):
         return "(R:{}, C:{})".format(self.row, self.col)
     
-def add(c1 : Coordinate, c2 : Coordinate) -> Coordinate:
-    return Coordinate(row = c1.row + c2.row, col = c1.col + c2.col)
+    #Override
+    def __eq__(self, other : Any) -> bool:
+        if not isinstance(other, type(self)) :
+            return False
+        return self.row == other.row and self.col == other.col
+    
+    #Override
+    def __hash__(self) -> int:
+        return hash((self.row,self.col))
+
+class RoombaAction(Coordinate, Action):
+
+    """
+    A RoombaAction is an Action and a Coordinate, representing the *relative* coordinate a Roomba is trying to move - that is, the 
+    number of rows down and columns right the roomba is trying to move. 
+    """
+
+    def __str__(self):
+        return ACTION_NAMES[self]
+
+    def applyTo(self, c : Coordinate) -> Coordinate:
+        """Returns the coordinate that results from applying this action from that coordinate"""
+        return Coordinate(row = self.row + c.row, col = self.col + c.col)
+
+    def is_legal(self):
+        """Returns whether or not the action as defined is generally legal"""
+        return self in ALL_ACTIONS
+
+# Global constants related to RoombaAction
+ALL_ACTIONS : Tuple[RoombaAction, ...] = (RoombaAction(0,1), RoombaAction(1,0), RoombaAction(0, -1), RoombaAction(-1,0))
+ACTION_NAMES : Dict[RoombaAction, str] = {RoombaAction(0,1): "East", RoombaAction(1,0): "South", RoombaAction(0, -1): "West", RoombaAction(-1,0): "North"}
+
 
 """All the directions the roomba position can move, and their names."""
-ALL_ACTIONS : Tuple[Coordinate] = (Coordinate(0,1), Coordinate(1,0), Coordinate(0, -1), Coordinate(-1,0))
-ACTION_NAMES : Dict[Coordinate, str] = {Coordinate(0,1): "East", Coordinate(1,0): "South", Coordinate(0, -1): "West", Coordinate(-1,0): "North"}
+
 class RoombaState(StateNode):
     """
     An immutable representation of the state of a Roomba Route environment. 
@@ -44,6 +75,9 @@ class RoombaState(StateNode):
     """ Type Hints allow for the optional type declaration of "instance variables" this way, like Java """
     position : Coordinate
     grid : Tuple[Tuple[Terrain,...],...]
+    # These are already mentioned in the StateNode superclass, but more specifically typed here
+    parent : Optional[RoombaState] 
+    last_action : Optional[RoombaAction]
 
     #Override
     @staticmethod
@@ -55,7 +89,7 @@ class RoombaState(StateNode):
             # Second line has the initial row/column of the roomba agent
             init_r, init_c = (int(x) for x in file.readline().split())
             # Remaining lines are the layout grid of the environment
-            grid = tuple( tuple(file.readline().strip()) for r in range(max_r))
+            grid = tuple( tuple(Terrain(x) for x in file.readline().strip()) for r in range(max_r))
             # Sanity check - is the grid really the right size?
             assert (len(grid) == max_r and all( len(row) == max_c for row in grid))
 
@@ -67,11 +101,11 @@ class RoombaState(StateNode):
                                 path_cost = 0)
     
     #Override
-    def __init__(self, 
-                position: Tuple[int, int], 
+    def __init__(self , 
+                position: Coordinate, 
                 grid: Tuple[Tuple[Terrain,...],...], 
                 parent : Optional[RoombaState], 
-                last_action: Optional[Coordinate],  #Note that actions are (relative) Coordinates!
+                last_action: Optional[RoombaAction],  #Note that actions are (relative) Coordinates!
                 depth : int, 
                 path_cost : float = 0.0) :
         """
@@ -102,6 +136,8 @@ class RoombaState(StateNode):
     def get_terrain(self, coord : Coordinate) -> Terrain:
         return self.grid[coord.row][coord.col]
 
+    def is_valid_position(self, coord: Coordinate) -> bool:
+        return self.is_inbounds(coord) and self.get_terrain(coord) != WALL  
 
     """ Overridden methods from StateNode """
 
@@ -115,7 +151,7 @@ class RoombaState(StateNode):
         However, two RoombaState with identical state features may not represent the same node of the search tree -
         that is, they may have different parents, last actions, path lengths/costs etc...
                 """
-        return (self.position)
+        return self.position
 
     # Override
     def __str__(self) -> str:
@@ -131,16 +167,15 @@ class RoombaState(StateNode):
         return self.get_terrain(self.position) in (DIRTY_FLOOR, DIRTY_CARPET)
 
     # Override
-    def is_legal_action(self, action : Coordinate) -> bool:
+    def is_legal_action(self, action : RoombaAction) -> bool:
         """Returns whether an action is legal from the current state"""
-        newpos = add(self.position, action)
-        return self.is_inbounds(newpos) and self.get_terrain(newpos) != WALL
+        return action.is_legal() and self.is_valid_position(action.applyTo(self.position))
 
     # Override
-    def get_all_actions(self) -> Iterable[Coordinate]:
+    def get_all_actions(self) -> Iterable[RoombaAction]:
         """Return all legal actions from this state. Actions are (relative) Coordinates."""
         for action in ALL_ACTIONS:
-            if self.is_legal_action(action):
+            if self.is_valid_position(action.applyTo(self.position)):
                 yield action
         ### The above generator definition is equivalent to:
         # return (a for a in ALL_ACTIONS if self.is_legal_action(a))
@@ -148,20 +183,13 @@ class RoombaState(StateNode):
         # return [a for a in ALL_ACTIONS if self.is_legal_action(a)]
 
     # Override
-    def describe_last_action(self) -> str:
-        """Returns a string describing the last_action taken (that resulted in transitioning from parent to this state)
-        (None if the initial state)
-        """
-        return ACTION_NAMES.get(self.last_action, None)
-
-    # Override
-    def get_next_state(self, action : Coordinate) -> RoombaState:
+    def get_next_state(self, action : RoombaAction) -> RoombaState:
         """ Return a new RoombaState that represents the state that results from taking the given action from this state.
         The new RoombaState object should have this (self) as its parent, and action as its last_action.
 
         -- action is assumed legal (is_legal_action called before)
         """
-        new_pos = add(self.position, action)
+        new_pos = action.applyTo(self.position)
         step_cost = TRANSITION_COSTS[self.get_terrain(new_pos)]
         return RoombaState( position = new_pos,
                                 grid = self.grid, # The grid doesn't change from state to state
