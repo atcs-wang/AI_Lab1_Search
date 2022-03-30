@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Optional, Any, Hashable, Sequence, Iterable
+from sre_parse import State
+from typing import Optional, Any, Hashable, Sequence, Iterable, TypeVar, List
+from abc import ABC, abstractmethod
 from copy import copy
 """
 An abstract framework for a goal-search problem.
@@ -11,19 +13,25 @@ Your search algorithms will work with StateNode objects, making them generalizab
 for all kinds of problems.
 """
 
-class Action:
+class Action(ABC):
     """ An abstract object that represents an action in an environment """
     def __str__(self) -> str:
         """ Returns a string that describes this action """
         raise NotImplementedError
     
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other : Any) -> bool:
         """ Returns whether other is equivalent in value """
         if not isinstance(other, type(self)) :
             return False
-        return NotImplementedError
+        raise NotImplementedError
 
-class StateNode:
+    def __hash__(self) -> int:
+        """ Returns a hash for this action, making it usable in Sets/Dicts."""
+        raise NotImplementedError
+
+
+SN = TypeVar("SN", bound="StateNode")
+class StateNode(ABC):
     """ An abstract object that represents a a state in an environment. 
     It also serves as a search tree "node" which includes information about the state's
     parent, last action taken (that leads to this state), and the length/cost of the path
@@ -31,12 +39,13 @@ class StateNode:
     """
 
     # Type Hints allow for the optional type declaration of instance variables, like Java
-    parent : StateNode
-    last_action : Action
+    parent : Optional[StateNode] #type:ignore
+    last_action : Optional[Action]
     depth : int
     path_cost : float
 
     @staticmethod
+    @abstractmethod
     def readFromFile(filename : str) -> StateNode:
         """Reads data from a text file and returns a StateNode which is an initial state.
         This should be implemented in subclasses to read problem specific, user-designed file formats. 
@@ -65,8 +74,8 @@ class StateNode:
         self.depth = depth
         self.path_cost = path_cost
 
-
-    def get_state_features(self) -> Hashable:
+    @abstractmethod
+    def get_state_features(self: SN) -> Hashable:
         """Returns a fully featured representation of the state.
 
         This should return something consistent, immutable, and hashable - 
@@ -78,18 +87,22 @@ class StateNode:
         """
         raise NotImplementedError
 
+    @abstractmethod
     def __str__(self) -> str:
         """Return a string representation of the state."""
         raise NotImplementedError
 
+    @abstractmethod
     def is_goal_state(self) -> bool:
         """Returns if a goal (terminal) state."""
         raise NotImplementedError
 
+    @abstractmethod
     def is_legal_action(self, action : Action) -> bool:
         """Returns whether an action is legal from the current state"""
         raise NotImplementedError
 
+    @abstractmethod
     def get_all_actions(self) -> Iterable[Action]:
         """Return all legal actions from this state. Actions may be whatever type you wish."""
         raise NotImplementedError
@@ -104,7 +117,8 @@ class StateNode:
         """
         return str(self.last_action)
 
-    def get_next_state(self, action : Action) -> StateNode:
+    @abstractmethod
+    def get_next_state(self: SN, action : Action) -> SN:
         """ Return a new StateNode that represents the state that results from taking the given action from this state.
         The new StateNode object should have this StateNode (self) as its parent, and action as its last_action.
 
@@ -112,20 +126,21 @@ class StateNode:
         """
         raise NotImplementedError
     
-    def get_path(self) -> Sequence[StateNode]:
+    def get_path(self: SN) -> Sequence[SN]:
         """Returns a sequence (list) of StateNodes representing the path from the initial state to this state.
 
         You do not need to override this method.
         """
-        path = [self]
+        path : List[SN]= [self]
         s = self.parent
         while s is not None :
-            path.append(s)
+            # type checkers break down here
+            path.append(s) #type: ignore
             s = s.parent
         path.reverse()
         return path
 
-    def get_as_root_node(self) -> StateNode:
+    def get_as_root_node(self: SN) -> SN:
         """ Return a copy of this state, but as an initial state node.
         That is, the root of its own search tree 
         """

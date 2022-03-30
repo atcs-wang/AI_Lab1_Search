@@ -45,7 +45,7 @@ class GoalSearchAgent():
 
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ To be overridden by algorithm subclasses (TreeSearchAgent, GraphSearchAgent, AnytimeSearchAlgorithm)
@@ -106,7 +106,7 @@ class TreeSearchAlgorithm(GoalSearchAgent):
     """
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ Perform a search from the initial_state. Here is the pseudocode:
@@ -255,7 +255,7 @@ class GraphSearchAlgorithm(GoalSearchAgent):
     """
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ Perform a search from the initial_state, which constitutes the initial frontier.
@@ -345,7 +345,7 @@ class GreedyBestSearch(InformedSearchAgent):
             heapq.heappush(self.frontier, (self.heuristic(state), state))
 
         
-    def dequeue(self) -> Tuple[float, StateNode]:
+    def dequeue(self) -> StateNode:
         """  Choose and remove the state with LOWEST ESTIMATED REMAINING COST TO GOAL from the frontier."""
         return heapq.heappop(self.frontier)[1]
 
@@ -403,7 +403,7 @@ class AnytimeSearchAlgorithm(InformedSearchAgent):
 
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ Perform an "Anytime" search from the initial_state
@@ -413,7 +413,7 @@ class AnytimeSearchAlgorithm(InformedSearchAgent):
         *Closest according to the agent's heuristic.
         """
         # Keep track of the closest path found yet
-        anytime_result  : Tuple[StateNode, float, float] = (None, INF, INF) 
+        anytime_result  : Tuple[Optional[StateNode], float, float] = (None, INF, INF) 
         ext_filter : Set[StateNode] = set() 
         self.enqueue(initial_state)
         while self.frontier: 
@@ -514,7 +514,7 @@ class TreeSearchNoTailBiteAlgorithm(GoalSearchAgent):
     """
     def search(self, 
             initial_state : StateNode, 
-            gui_callback_fn : Callable[[StateNode],bool] = lambda : False,
+            gui_callback_fn : Callable[[StateNode],bool] = lambda n : False,
             cutoff : Union[int, float] = INF 
             ) -> Optional[StateNode]:
         """ Perform a search from the initial_state. Here is the pseudocode:

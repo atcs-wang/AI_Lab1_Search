@@ -16,10 +16,10 @@ from search_algorithms import GoalSearchAgent, ALL_AGENTS
 INF = float('inf')
 
 class Search_GUI(Tk):
-    STEP_TIME_OPTIONS = (0.00, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-                    0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 5.0)
+    STEP_TIME_OPTIONS = [str(x) for x in (0.00, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+                    0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0, 5.0)]
 
-    CUTOFF_OPTIONS = list(range(1,10)) + list(range(10,100,10)) + list(range(100,1000,100)) + [1000, 'INF']
+    CUTOFF_OPTIONS : List[str] = [ str(x) for x in range(1,10)] + [str(x) for x in range(10,100,10)] + [str(x) for x in range(100,1000,100)] + ['1000', 'INF']
 
     def __init__(self, canvas_height : int, canvas_width : int, algorithm_names : Sequence[str], strategy_names : Sequence[str], heuristics : Dict[str, Callable[[StateNode], float]]):
         super().__init__()
@@ -106,7 +106,7 @@ class Search_GUI(Tk):
             self.cutoff_spinbox.invoke('buttonup')
 
 
-        self.reset_button = Button(controls_frame, text="Terminate Search", # End Epochs early / restart
+        self.reset_button = Button(controls_frame, text="Terminate Search", # End Search early / restart
                             width = 15, pady = 3)
         self.reset_button.grid(row = 1, column = 0, sticky = N)
 
@@ -239,8 +239,9 @@ class Search_GUI(Tk):
         if please_analyze is True or (please_analyze is None and self.analyze_state_option_var.get()):
             self.goal_heuristic_label['text'] = "Est. Rem. Cost to Goal: {}".format(self.get_heuristic_selection()(state))
 
-    def update_agent(self, agent : GoalSearchAgent, please_print: Optional[bool] = None):
-        if please_print is True or (please_print is None and self.print_agent_info_option_var.get()):
+    def update_agent(self, agent : Optional[GoalSearchAgent] = None, please_print : Optional[bool] = None):
+
+        if agent is not None and (please_print is True or (please_print is None and self.print_agent_info_option_var.get()) ):
             self.agent_info_label_1['text'] = ('Total Extends: {}'.format(agent.total_extends))
             self.agent_info_label_2['text'] = ('Total Enqueues: {}'.format(agent.total_enqueues))
 
@@ -267,13 +268,14 @@ class Search_GUI(Tk):
 
 class Status:
     @staticmethod
-    def is_valid_transition_to(next_status: Type[Status]):
+    def is_valid_transition_to(next_status: Type[Status]) -> bool:
         raise NotImplementedError
     @staticmethod
-    def get_status_text(alg : str):
+    def get_status_text(alg : str) -> str:
         raise NotImplementedError
+
     @staticmethod
-    def update_ui(self, gui : Search_GUI):
+    def update_ui(gui : Search_GUI):
         pass
     @staticmethod
     def handle_reset_button(app : Search_GUI_Controller):
@@ -334,17 +336,17 @@ class Waiting_Base(Status):
         app.update_status_and_ui(Initial_Waiting)
     @staticmethod
     def handle_run_pause_button(app : Search_GUI_Controller):
-        app.attempt_start_search(Running)
+        app.run_search(Running)
     @staticmethod
     def handle_step_button(app : Search_GUI_Controller):
-        app.attempt_start_search(Running_Step)
+        app.run_search(Running_Step)
     @staticmethod
     def handle_fly_blind_search_button(app : Search_GUI_Controller):
-        app.attempt_start_search(Running_Blind)
+        app.run_search(Running_Blind)
     @staticmethod
     def handle_click_canvas(app : Search_GUI_Controller, event = None):
-        action = app.gui.click_canvas_to_action(event)
-        if action is not None and action in app.gui.current_state.get_all_actions():
+        action : Action = app.gui.click_canvas_to_action(event)
+        if action is not None and app.gui.current_state.is_legal_action(action):
             app.update_status_and_ui(Interactive_Waiting)
             app.gui.update_state(app.gui.current_state.get_next_state(action), please_draw=True)
             #Small hack...
@@ -489,7 +491,7 @@ class Running_Step(Running_Base):
         Running_Base.update_ui(gui)
 
         gui.run_pause_button['state'] = NORMAL
-        gui.run_pause_button['text'] = 'Continue Epochs'
+        gui.run_pause_button['text'] = 'Continue Search'
         gui.run_pause_button['bg'] = 'green'
 
         gui.step_button['state'] = DISABLED
@@ -529,7 +531,7 @@ class Running_Paused(Running_Base):
         # Running_Base.update_ui(gui)
         
         gui.run_pause_button['state'] = NORMAL
-        gui.run_pause_button['text'] = 'Continue Epochs'
+        gui.run_pause_button['text'] = 'Continue Search'
         gui.run_pause_button['bg'] = 'green'
 
         gui.step_button['state'] = NORMAL
@@ -637,10 +639,10 @@ class Search_GUI_Controller:
     gui : Search_GUI 
     initial_state: StateNode
     status : Type[Status]
-    current_agent : GoalSearchAgent
+    current_agent : Optional[GoalSearchAgent]
     heuristics : Dict[str, Callable[[StateNode], float]]
 
-    def __init__(self, gui: Search_GUI, initial_state: StateNode, heuristics : Dict[str,Callable[[StateNode], float]], all_agents : Dict[str,Dict[str, GoalSearchAgent]] = ALL_AGENTS):
+    def __init__(self, gui: Search_GUI, initial_state: StateNode, heuristics : Dict[str,Callable[[StateNode], float]], all_agents : Dict[str,Dict[str, Type[GoalSearchAgent]]] = ALL_AGENTS):
         self.gui = gui
         self.all_agents = all_agents
         self.initial_state = initial_state
@@ -675,7 +677,7 @@ class Search_GUI_Controller:
             Status_Transition_Error.to_status = newstatus
             Status_Transition_Error.from_status = self.status
             self.status = Status_Transition_Error
-        self.gui.status_label['text'] = self.status.get_status_text(type(self.current_agent).__name__)
+        self.gui.status_label['text'] = self.status.get_status_text(type(self.current_agent).__name__ if self.current_agent != None else "NO ALG")
         self.status.update_ui(self.gui)
         self.gui.update_idletasks()
 
@@ -698,46 +700,43 @@ class Search_GUI_Controller:
 
 
 
-    def attempt_start_search(self, status: Type[Running_Base]):
-
+    def run_search(self, status: Type[Running_Base]):
         if not self.verify_and_update_parameters(status):
             return 
+
         self.current_agent = self.get_agent_selection()
         self.update_status_and_ui(status)
         try:
-            self.run_search()
+            start_time = time()
+            solution_state : Optional[StateNode] = self.current_agent.search(initial_state = self.gui.current_state.get_as_root_node(),
+                                                                    gui_callback_fn = self.alg_callback,
+                                                                    cutoff = self.gui.get_cutoff())   
+            elapsed_time = time() - start_time
+
+            print("{} ran for {:.4f} seconds.".format(type(self.current_agent).__name__, elapsed_time))
+
+            self.gui.update_agent(self.current_agent, please_print=True)
+            if solution_state is not None:
+                self.gui.update_state(solution_state, please_draw=True, please_print=True, please_analyze=True)  
+                if solution_state.is_goal_state():
+                    self.update_status_and_ui(Finished_Success_Waiting)
+                else:
+                    self.update_status_and_ui(Finished_Failure_Waiting)
+            else:
+                self.gui.update_state(self.initial_state, please_draw=True, please_print=True, please_analyze=True)  
+                if self.status is Running_Terminating:
+                    self.update_status_and_ui(Terminated_Waiting)
+                else:
+                    self.update_status_and_ui(Finished_Failure_Waiting)
+                
+                
+            self.sleep_update_tk(.1)
         except Exception:
             print(format_exc())
             if self.status != Status_Transition_Error:
                 self.update_status_and_ui(Algorithm_Error)
 
 
-    def run_search(self):
-        # Assume self.current_agent has been initialized
-        start_time = time()
-        solution_state : StateNode = self.current_agent.search(initial_state = self.gui.current_state.get_as_root_node(),
-                                                                gui_callback_fn = self.alg_callback,
-                                                                cutoff = self.gui.get_cutoff())   
-        elapsed_time = time() - start_time
-
-        print("{} ran for {:.4f} seconds.".format(type(self.current_agent).__name__, elapsed_time))
-
-        self.gui.update_agent(self.current_agent, please_print=True)
-        if solution_state is not None:
-            self.gui.update_state(solution_state, please_draw=True, please_print=True, please_analyze=True)  
-            if solution_state.is_goal_state():
-                self.update_status_and_ui(Finished_Success_Waiting)
-            else:
-                self.update_status_and_ui(Finished_Failure_Waiting)
-        else:
-            self.gui.update_state(self.initial_state, please_draw=True, please_print=True, please_analyze=True)  
-            if self.status is Running_Terminating:
-                self.update_status_and_ui(Terminated_Waiting)
-            else:
-                self.update_status_and_ui(Finished_Failure_Waiting)
-            
-            
-        self.sleep_update_tk(.1)
 
     def sleep_update_tk(self, secs : float, interval : float = .05):
         '''
