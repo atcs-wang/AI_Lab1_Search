@@ -2,32 +2,61 @@
 # Name(s): SOLUTION
 
 from __future__ import annotations
-from typing import Optional, Any, Hashable, Sequence, Iterable, Dict, Union, List, Tuple, NamedTuple
+from typing import Optional, Any, Hashable, Sequence, Iterable, Dict, Union, List, Tuple, cast
 
 from search_problem import StateNode, Action
 
 #### Lab 1, Part 1b: Problem Representation #################################################
 
-class Coordinate(NamedTuple, Action):
-    """ Represents a specific location on the grid with row r and column c
-    Can be created with Coordinate(r=row, c=col), or just Coordinate(row,col).
-    Properties r and c can be accessed with dot notation or as if a tuple (r,c)
-
-    Is also an Action, representing the coordinate of the tile that is to be moved into 
-    the empty space. The first row and column are numbered 0.
+class Coordinate:
+    """ Represents a specific location on the grid with given row and col(umn)
+    The first row and column are numbered 0.
     """
-    r : int
-    c : int
+    row : int
+    col : int
+    def __init__(self, row : int, col : int):
+        self.row = row
+        self.col = col
 
+    #Override
     def __str__(self):
-        return "(R:{}, C:{})".format(self.r, self.c)
+        return "(R:{}, C:{})".format(self.row, self.col)
+    
+    #Override
+    def __eq__(self, other : Any) -> bool:
+        if not isinstance(other, type(self)) :
+            return False
+        return self.row == other.row and self.col == other.col
+    
+    #Override
+    def __hash__(self) -> int:
+        return hash((self.row,self.col))
 
+
+    def sameAs(self, r: int, c: int) -> bool:
+        """Convenience method for checking equivalence to a coordinate pair"""
+        return self.row == r and self.col == c
+    
+
+class SlidePuzzleAction(Coordinate, Action):
+    """Representing the coordinate of the tile that is to be moved into 
+    the empty space.
+
+    Subclass of both Coordinate and Action
+    """
+    pass
+
+
+ALL_ADJACENT : Tuple[Tuple[int,int],...]= ((0,1), (-1,0), (0,-1), (1,0))
 class SlidePuzzleState(StateNode):
     """ A state node for the slide puzzle environment. """
 
     # Type Hints allow for the optional type declaration of "instance variables" this way, like Java.
     tiles : Tuple[Tuple[int, ...], ...]
     empty_pos : Coordinate
+    # These are already mentioned in the StateNode superclass, but more specifically typed here
+    parent : Optional[SlidePuzzleState] 
+    last_action : Optional[SlidePuzzleAction]
     
     @staticmethod
     def readFromFile(filename : str) -> SlidePuzzleState:
@@ -60,8 +89,8 @@ class SlidePuzzleState(StateNode):
     def __init__(self, 
             tiles : Tuple[Tuple[int, ...], ...],
             empty_pos : Coordinate,
-            parent : Optional[StateNode], 
-            last_action: Optional[Coordinate], 
+            parent : Optional[SlidePuzzleState], 
+            last_action: Optional[SlidePuzzleAction], 
             depth : int, 
             path_cost : float = 0.0) :
         """Creates a SlidePuzzleState that represents a state of the environment and context for how the agent gets 
@@ -87,7 +116,7 @@ class SlidePuzzleState(StateNode):
         If the position is empty, return 0.
         Ideally, this should be done in constant time, not O(N) or O(N^2) time...
         """
-        return self.tiles[coord.r][coord.c]
+        return self.tiles[coord.row][coord.col]
 
     def get_empty_pos(self) -> Coordinate:
         """Returns Coordinate of the empty tile.
@@ -117,7 +146,7 @@ class SlidePuzzleState(StateNode):
            similar to the file format for initial states
         """
         n = self.get_size()
-        return "\n".join(" ".join("{:2d}".format(self.get_tile_at(Coordinate(r,c))) for c in range(n)) for r in range(n))
+        return "\n".join(" ".join("{:2d}".format(self.tiles[r][c]) for c in range(n)) for r in range(n))
     
     # Override
     def is_goal_state(self) -> bool:
@@ -134,7 +163,7 @@ class SlidePuzzleState(StateNode):
         return True
 
     # Override
-    def is_legal_action(self, action : Coordinate) -> bool:
+    def is_legal_action(self, action : SlidePuzzleAction) -> bool:
         """Returns whether an action is legal from the current state
 
         Actions in the slide puzzle environment involve moving a tile into
@@ -145,13 +174,13 @@ class SlidePuzzleState(StateNode):
         actually adjacent to the emty slot.
         """
         return self.is_inbounds(action) and (
-            abs(action[0] - self.empty_pos[0]) + abs(action[1] - self.empty_pos[1])) == 1
+            abs(action.row - self.empty_pos.row) + abs(action.col - self.empty_pos.col)) == 1
 
     # Override
-    def get_all_actions(self) -> Iterable[Coordinate]:
+    def get_all_actions(self) -> Iterable[SlidePuzzleAction]:
         """Return all legal actions at this state."""
-        for dr, dc in ((0,1), (-1,0), (0,-1), (1,0)):
-            action = Coordinate(self.empty_pos[0] + dr, self.empty_pos[1] + dc)
+        for dr, dc in ALL_ADJACENT:
+            action = SlidePuzzleAction(self.empty_pos.row + dr, self.empty_pos.col + dc)
             if self.is_inbounds(action):
                 yield action
 
@@ -163,12 +192,13 @@ class SlidePuzzleState(StateNode):
         The action should be described as "Moved tile X" where X is the tile number
         that last got slid into the empty spot.
         """
-        if self.last_action is None:
-             return None 
-        return "Moved tile {}".format(self.parent.get_tile_at(self.last_action))
+        if self.parent is None or self.last_action is None:
+             return "No Action Yet"
+        else:
+            return "Moved tile {}".format(self.parent.get_tile_at(self.last_action))
 
     # Override
-    def get_next_state(self, action : Coordinate) -> SlidePuzzleState:
+    def get_next_state(self, action : SlidePuzzleAction) -> SlidePuzzleState:
         """ Return a new StateNode that represents the state that results from taking the given action from this state.
         The new StateNode object should have this StateNode (self) as its parent, and action as its last_action.
 
@@ -176,7 +206,7 @@ class SlidePuzzleState(StateNode):
         """
         # Swap empty_pos with action Coord
         t = self.get_tile_at(action)
-        new_tiles = tuple(tuple( 0 if (r,c) == action else (t if (r,c) == self.empty_pos else x) for c, x in enumerate(row)) for r, row in enumerate(self.tiles))
+        new_tiles = tuple(tuple( 0 if action.sameAs(r,c) else (t if self.empty_pos.sameAs(r,c) else x) for c, x in enumerate(row)) for r, row in enumerate(self.tiles))
         return SlidePuzzleState( 
                         tiles = new_tiles,
                         empty_pos = action,
@@ -189,7 +219,7 @@ class SlidePuzzleState(StateNode):
     """ You may add additional methods that may be useful! """
 
     def is_inbounds(self, coord : Coordinate) -> bool:
-        return (coord[0] >= 0) and (coord[1]  >= 0) and (coord[0] < self.get_size()) and (coord[1] < self.get_size())
+        return (coord.row >= 0) and (coord.col  >= 0) and (coord.row <self.get_size()) and (coord.col  < self.get_size())
 
     def get_tile_final_dest(self, tile : int) -> Coordinate:
-        return (tile // self.get_size(), tile % self.get_size())
+        return Coordinate(tile // self.get_size(), tile % self.get_size())
