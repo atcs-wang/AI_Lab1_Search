@@ -39,7 +39,7 @@ class Coordinate:
     
 
 class SlidePuzzleAction(Coordinate, Action):
-    """Representing the coordinate of the tile that is to be moved into 
+    """Represents the coordinate of the tile that is to be moved into 
     the empty space.
 
     Subclass of both Coordinate and Action
