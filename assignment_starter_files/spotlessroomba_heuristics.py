@@ -1,19 +1,21 @@
 from search_heuristics import *
 from spotlessroomba_problem import *
 
-INF = float('inf')
-
+# TODO If applicable, argue for why this is admissible / consistent!
 def spotlessroomba_first_heuristic(state : SpotlessRoombaState)  -> float:
-    # TODO a nontrivial admissible heuristic
+    # TODO implement a custom, nontrivial heuristic. Rename appropriately
     raise NotImplementedError
 
+# TODO If applicable, argue for why this is admissible / consistent!
 def spotlessroomba_second_heuristic(state : SpotlessRoombaState)  -> float:
-    # TODO a nontrivial consistent heuristic
+    # TODO implement a custom, nontrivial heuristic. Rename appropriately
     raise NotImplementedError
 
-# Make sure to update names below, and add any extra you create.
+# TODO if you wish, implement more heuristics!
+
+# TODO Update heuristic names and functions below. If you make more than two, add them here.
 SPOTLESSROOMBA_HEURISTICS = {"Zero" : zero_heuristic,
                         "Arbitrary": arbitrary_heuristic, 
-                        "Custom Heur. 1 (admissible)": spotlessroomba_first_heuristic,
-                        "Custom Heur. 2 (consistent)" : spotlessroomba_second_heuristic
+                        "Custom Heur. 1": spotlessroomba_first_heuristic,
+                        "Custom Heur. 2" : spotlessroomba_second_heuristic
                         }
