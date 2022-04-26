@@ -407,6 +407,18 @@ class Finished_Failure_Waiting(Waiting_Base):
         gui.step_button['state'] = DISABLED
         gui.fly_blind_search_button['state'] = DISABLED        
 
+class Finished_Incomplete_Waiting(Waiting_Base):
+    @staticmethod
+    def is_valid_transition_to(next_status: Type[Status]):
+        return next_status in (Initial_Waiting,Interactive_Waiting, Running, Running_Paused, Running_Step, Running_Blind)
+    @staticmethod
+    def get_status_text(alg : str):
+        return "{} finished incompletely.".format(alg)
+
+    @staticmethod
+    def update_ui(gui : Search_GUI):
+        Waiting_Base.update_ui(gui)
+
 class Terminated_Waiting(Waiting_Base):
     @staticmethod
     def is_valid_transition_to(next_status: Type[Status]):
@@ -452,7 +464,7 @@ class Running(Running_Base):
     @staticmethod
     def is_valid_transition_to(next_status: Type[Status]):
         return next_status in (Running_Paused, Running_Step, Running_Blind, 
-                                Running_Terminating, Finished_Success_Waiting, Finished_Failure_Waiting, Algorithm_Error)
+                                Running_Terminating, Finished_Success_Waiting, Finished_Failure_Waiting, Finished_Incomplete_Waiting, Algorithm_Error)
 
     @staticmethod
     def get_status_text(alg : str):
@@ -481,7 +493,7 @@ class Running_Step(Running_Base):
     @staticmethod
     def is_valid_transition_to(next_status: Type[Status]):
         return next_status in (Running_Paused, Running, Running_Blind, 
-                                Running_Terminating, Finished_Success_Waiting, Finished_Failure_Waiting, Algorithm_Error)
+                                Running_Terminating, Finished_Success_Waiting, Finished_Failure_Waiting, Finished_Incomplete_Waiting, Algorithm_Error)
     @staticmethod
     def get_status_text(alg : str):
         return "{} is taking one step...".format(alg),
@@ -519,7 +531,7 @@ class Running_Paused(Running_Base):
     @staticmethod
     def is_valid_transition_to(next_status: Type[Status]):
         return next_status in (Running_Step, Running, Running_Blind, 
-                                Running_Terminating, Finished_Success_Waiting, Finished_Failure_Waiting, Algorithm_Error)
+                                Running_Terminating, Finished_Success_Waiting, Finished_Failure_Waiting, Finished_Incomplete_Waiting, Algorithm_Error)
 
     @staticmethod
     def get_status_text(alg : str):
@@ -557,7 +569,7 @@ class Running_Paused(Running_Base):
 class Running_Blind(Running_Base):
     @staticmethod
     def is_valid_transition_to(next_status: Type[Status]):
-        return next_status in (Finished_Success_Waiting, Finished_Failure_Waiting, Algorithm_Error)
+        return next_status in (Finished_Success_Waiting, Finished_Failure_Waiting,  Finished_Incomplete_Waiting, Algorithm_Error)
 
     @staticmethod
     def get_status_text(alg : str):
@@ -578,7 +590,7 @@ class Running_Blind(Running_Base):
 class Running_Terminating(Running_Base):
     @staticmethod
     def is_valid_transition_to(next_status: Type[Status]):
-        return next_status in (Terminated_Waiting, Algorithm_Error, Finished_Failure_Waiting, Finished_Success_Waiting)
+        return next_status in (Terminated_Waiting, Algorithm_Error, Finished_Failure_Waiting, Finished_Success_Waiting, Finished_Incomplete_Waiting)
 
     @staticmethod
     def get_status_text(alg : str):
@@ -721,7 +733,7 @@ class Search_GUI_Controller:
                 if solution_state.is_goal_state():
                     self.update_status_and_ui(Finished_Success_Waiting)
                 else:
-                    self.update_status_and_ui(Finished_Failure_Waiting)
+                    self.update_status_and_ui(Finished_Incomplete_Waiting)
             else:
                 self.gui.update_state(self.initial_state, please_draw=True, please_print=True, please_analyze=True)  
                 if self.status is Running_Terminating:
