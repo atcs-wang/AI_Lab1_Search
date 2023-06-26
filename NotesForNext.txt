@@ -1,0 +1,18 @@
+Provide a slide puzzle heuristic tester and/or a list of correct hamming/manhattan values for the various slide puzzles
+
+on GUI: Round the Est. Rem. Cost to Goal number to some number of decimal places
+
+on GUI: optional display for Path Cost + Cost to Goal. Maybe, make each state detail an option?
+
+Make a competition for best spotless heuristic? 
+
+
+Grading notes for Lab 1:
+
+Test on puzzle17: initial Manhattan should be 13, hamming should be 8
+
+Misunderstanding of Anytime search, not correctly implemented. (-12)
+
+Manhattan heuristic includes the empty tile, leading to A-star being incorrect on some tests (-5)
+
+Graph search incorrectly adds enqueued things to the filter, rather than extended (-5).

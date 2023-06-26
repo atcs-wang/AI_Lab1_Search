@@ -1,5 +1,4 @@
 from __future__ import annotations
-from sre_parse import State
 from typing import Optional, Any, Hashable, Sequence, Iterable, TypeVar, List
 from abc import ABC, abstractmethod
 from copy import copy
@@ -46,7 +45,7 @@ class StateNode(ABC):
 
     @staticmethod
     @abstractmethod
-    def readFromFile(filename : str) -> StateNode:
+    def readFromFile(filename : str) -> SN:
         """Reads data from a text file and returns a StateNode which is an initial state.
         This should be implemented in subclasses to read problem specific, user-designed file formats. 
         """
